@@ -84,7 +84,8 @@ def build_context(
             OpenPurchaseOrder(
                 po_id=po.id,
                 supplier_id=po.supplier_id,
-                quantity=po.quantity,
+                # What the supplier confirmed, not what was asked for.
+                quantity=po.outstanding_quantity,
                 eta=po.eta,
                 status=po.status,
                 note=po.note,

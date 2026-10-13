@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { api, type Health } from './api'
 import { Inbox } from './pages/Inbox'
+import { RunDetail } from './pages/RunDetail'
 import { useRoute } from './router'
 
 export default function App() {
@@ -52,7 +53,8 @@ export default function App() {
       </header>
 
       {route.page === 'inbox' && <Inbox agentReady={agentReady} onDataChanged={refreshShell} />}
-      {route.page !== 'inbox' && (
+      {route.page === 'run' && <RunDetail id={route.id} />}
+      {route.page === 'approvals' && (
         <div className="page">
           <p className="muted">Coming next.</p>
         </div>

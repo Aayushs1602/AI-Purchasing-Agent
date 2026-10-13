@@ -3,6 +3,9 @@
   "plugins": ["react", "typescript", "oxc"],
   "rules": {
     "react/rules-of-hooks": "error",
-    "react/only-export-components": ["warn", { "allowConstantExport": true }]
+    "react/only-export-components": ["warn", { "allowConstantExport": true }],
+    // Effects here synchronise with the API (fetch, then set state after the await),
+    // which is what effects are for; this rule cannot tell that from a sync update.
+    "react/set-state-in-effect": "off"
   }
 }

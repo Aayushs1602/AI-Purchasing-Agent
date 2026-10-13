@@ -28,6 +28,8 @@ class Settings(BaseSettings):
     sim_today: date = date(2026, 10, 1)
     # Lets POST /api/admin/reset wipe and reseed the database. Turn off outside demos.
     allow_demo_reset: bool = True
+    # Read-only database browser at /admin. It has no login, so keep it off outside local dev.
+    admin_ui_enabled: bool = True
 
     @property
     def cors_origin_list(self) -> list[str]:

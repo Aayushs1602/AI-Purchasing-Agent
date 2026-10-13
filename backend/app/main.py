@@ -6,6 +6,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from app.admin_ui import mount_admin
 from app.api import admin, purchase_orders, recommendations
 from app.config import Settings, get_settings
 from app.db import make_engine, make_session_factory
@@ -47,6 +48,9 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(recommendations.router)
     app.include_router(purchase_orders.router)
     app.include_router(admin.router)
+
+    if settings.admin_ui_enabled:
+        mount_admin(app, engine)
     return app
 
 

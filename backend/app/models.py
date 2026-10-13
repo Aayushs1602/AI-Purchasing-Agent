@@ -30,7 +30,7 @@ class Base(DeclarativeBase):
 
 # Bump whenever a table or column changes. On startup a database stamped with another
 # version is rebuilt from the scenarios (demo data only; production would use migrations).
-SCHEMA_VERSION = 6
+SCHEMA_VERSION = 7
 
 
 class SchemaInfo(Base):
@@ -294,3 +294,6 @@ class Escalation(Base):
     options: Mapped[list[str]] = mapped_column(JSON)
     status: Mapped[str] = mapped_column(String(16), default="open")
     created_on: Mapped[date] = mapped_column(Date)
+    resolved_by: Mapped[str | None] = mapped_column(String(64), default=None)
+    resolution: Mapped[str | None] = mapped_column(Text, default=None)
+    resolved_on: Mapped[date | None] = mapped_column(Date, default=None)

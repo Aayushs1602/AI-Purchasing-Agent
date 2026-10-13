@@ -85,6 +85,8 @@ class EscalationAdmin(ReadOnlyView, model=Escalation):
         Escalation.reason,
         Escalation.questions,
         Escalation.options,
+        Escalation.resolved_by,
+        Escalation.resolution,
     ]
     column_searchable_list = [Escalation.recommendation_id, Escalation.run_id]
 

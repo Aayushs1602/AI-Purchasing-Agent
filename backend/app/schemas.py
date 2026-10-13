@@ -129,6 +129,9 @@ class EscalationOut(BaseModel):
     options: list[str]
     status: str
     created_on: date
+    resolved_by: str | None
+    resolution: str | None
+    resolved_on: date | None
 
 
 class PausedFor(BaseModel):

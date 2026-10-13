@@ -17,14 +17,21 @@ export function RunDetail({ id }: { id: string }) {
   // After a human decides, keep polling until the resumed run moves on.
   const [resuming, setResuming] = useState(false)
   const lastSeq = useRef(0)
+  const currentId = useRef(id)
 
-  // Fetch the run and only the steps we have not seen yet.
+  // Fetch the run and only the steps we have not seen yet. Polls can overlap (and React's
+  // dev mode mounts twice), so steps are merged by seq rather than appended blindly.
   const refresh = useCallback(async () => {
     try {
       const next = await api.run(id, lastSeq.current)
+      if (currentId.current !== id) return // the user has moved to another run
       if (next.steps.length) {
-        lastSeq.current = next.steps[next.steps.length - 1].seq
-        setSteps((prev) => [...prev, ...next.steps])
+        lastSeq.current = Math.max(lastSeq.current, next.steps[next.steps.length - 1].seq)
+        setSteps((prev) => {
+          const seen = new Set(prev.map((s) => s.seq))
+          const fresh = next.steps.filter((s) => !seen.has(s.seq))
+          return fresh.length ? [...prev, ...fresh] : prev
+        })
       }
       setRun(next)
       if (next.status !== 'awaiting_approval') setResuming(false)
@@ -35,6 +42,7 @@ export function RunDetail({ id }: { id: string }) {
   }, [id])
 
   useEffect(() => {
+    currentId.current = id
     lastSeq.current = 0
     setSteps([])
     setRun(null)

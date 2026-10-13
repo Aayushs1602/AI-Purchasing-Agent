@@ -27,7 +27,7 @@ def client(make_client):
 def test_lists_all_seeded_recommendations(client):
     recs = client.get("/api/recommendations").json()
 
-    assert len(recs) == 13
+    assert len(recs) == 14
     first = recs[0]
     assert (first["id"], first["product_name"], first["quantity"]) == (
         "REC-1001",
@@ -77,8 +77,8 @@ def test_purchase_orders_filter(client):
 
 
 def test_reset_reseeds(client):
-    assert client.post("/api/admin/reset").json() == {"scenarios": 13}
-    assert len(client.get("/api/recommendations").json()) == 13
+    assert client.post("/api/admin/reset").json() == {"scenarios": 14}
+    assert len(client.get("/api/recommendations").json()) == 14
 
 
 def test_reset_can_be_disabled(make_client):

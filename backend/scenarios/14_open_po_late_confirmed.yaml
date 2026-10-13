@@ -1,0 +1,28 @@
+id: open_po_late_confirmed
+title: Open PO is a day late but confirmed for tomorrow
+summary: >-
+  A 320-unit PO was due yesterday. The supplier's latest note says the truck was delayed and
+  delivery is confirmed for tomorrow morning. Unlike a held PO, this stock is coming.
+# Held-out check, added after the first live evaluation and labelled before any run: the
+# round-2 prompt rule on unreliable supply must not make the agent ignore every late PO.
+world:
+  product: {sku: SKU-1014, name: Bananas 1kg bag, category: Fruit}
+  supplier: {id: SUP-FRUTAL, name: Frutal Andina, on_time_rate: 0.81, fill_rate: 0.93}
+  open_purchase_orders:
+    - id: PO-2043
+      quantity: 320
+      eta_in_days: -1
+      status: confirmed
+      created_days_ago: 6
+      note: >-
+        Supplier update: truck delayed by one day. Delivery confirmed for tomorrow morning,
+        full quantity.
+  recommendation: {id: REC-1014}
+expect:
+  acceptable:
+    - {decision: modify, po_quantity: [480, 500], approval: required}
+  must_cite: [open_pos]
+  rationale: >-
+    The PO is late but confirmed, so it should count: the need is 480. Ordering 800 as if it
+    were not coming would overflow storage (1,220 of 1,200) once it lands. The overdue flag
+    sends any order to a human. Excluding this PO would be wrong.

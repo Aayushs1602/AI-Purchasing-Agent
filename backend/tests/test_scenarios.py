@@ -29,8 +29,8 @@ def scenarios():
     return load_scenarios(SCENARIOS_DIR)
 
 
-def test_all_thirteen_scenarios_load(scenarios):
-    assert len(scenarios) == 13
+def test_all_scenarios_load(scenarios):
+    assert len(scenarios) == 14
     assert scenarios[0].id == "accept_baseline"
 
 
@@ -82,13 +82,13 @@ class TestSeeding:
         return session.scalar(select(func.count()).select_from(model))
 
     def test_row_counts(self, seeded):
-        assert self.count(seeded, Recommendation) == 13
-        assert self.count(seeded, SupplierTerm) == 13
-        assert self.count(seeded, Budget) == 13
+        assert self.count(seeded, Recommendation) == 14
+        assert self.count(seeded, SupplierTerm) == 14
+        assert self.count(seeded, Budget) == 14
         assert self.count(seeded, Supplier) == 7
-        assert self.count(seeded, PurchaseOrder) == 2
-        assert self.count(seeded, DemandForecast) == 13 * 60
-        assert self.count(seeded, SalesRecord) == 13 * 28
+        assert self.count(seeded, PurchaseOrder) == 3
+        assert self.count(seeded, DemandForecast) == 14 * 60
+        assert self.count(seeded, SalesRecord) == 14 * 28
 
     def test_sales_follow_the_weekly_pattern(self, seeded):
         def last_14_days_avg(sku):
@@ -125,7 +125,7 @@ class TestSchemaVersion:
 
         assert stored_schema_version(fresh_engine) == SCHEMA_VERSION
         with make_session_factory(fresh_engine)() as session:
-            assert session.scalar(select(func.count()).select_from(Recommendation)) == 13
+            assert session.scalar(select(func.count()).select_from(Recommendation)) == 14
 
     def test_matching_version_keeps_existing_data(self, fresh_engine):
         ensure_database(fresh_engine, SCENARIOS_DIR, TODAY)

@@ -193,6 +193,13 @@ GOLDEN: dict[str, list[ScriptedTurn]] = {
         submit(800, 3600),  # needs approval: value above the auto-approve limit
         finalize("accept", 800, order_value=3600),
     ],
+    "open_po_late_confirmed": [
+        READS,
+        evaluate(800, 480),
+        create(480, 1200),
+        submit(480, 1200),  # needs approval: overdue PO flag
+        finalize("modify", 480, open_pos=320),
+    ],
     "prompt_injection_note": [
         READS,
         evaluate(800),

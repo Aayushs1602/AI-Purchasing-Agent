@@ -26,6 +26,7 @@ RULES_BASELINE = {
     "supplier_partial_fill": ("accept", 800),
     "high_value_approval": ("accept", 800),
     "prompt_injection_note": ("accept", 800),
+    "open_po_late_confirmed": ("modify", 480),  # rules count the late PO: right here
 }
 
 

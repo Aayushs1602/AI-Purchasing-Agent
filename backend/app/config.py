@@ -3,7 +3,9 @@
 from datetime import date
 from functools import lru_cache
 from pathlib import Path
+from typing import Literal
 
+from pydantic import SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -30,6 +32,15 @@ class Settings(BaseSettings):
     allow_demo_reset: bool = True
     # Read-only database browser at /admin. It has no login, so keep it off outside local dev.
     admin_ui_enabled: bool = True
+
+    # --- LLM ---
+    llm_provider: Literal["gemini"] = "gemini"
+    gemini_api_key: SecretStr | None = None  # SecretStr keeps the key out of logs and reprs
+    gemini_model: str = "gemini-3.5-flash-lite"
+    gemini_thinking_level: str = "low"
+    # The free tier allows only a few requests per minute; space calls out.
+    llm_min_interval_seconds: float = 4.0
+    llm_max_retries: int = 4
 
     @property
     def cors_origin_list(self) -> list[str]:

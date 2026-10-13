@@ -113,6 +113,9 @@ class TestLimits:
         ctx = make_context(budget_available=2200, supplier={"unit_cost": 2.90})
         assert im.max_affordable_quantity(ctx) == 740  # 758 units -> 37 cases
 
+    def test_overcommitted_budget_affords_nothing(self):
+        assert im.max_affordable_quantity(make_context(budget_available=-120)) == 0
+
     def test_max_storable_quantity(self):
         assert im.max_storable_quantity(make_context(storage_capacity=800), DEFAULT) == 700
 

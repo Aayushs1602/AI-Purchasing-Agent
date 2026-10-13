@@ -106,7 +106,7 @@ def order_value(ctx: PurchasingContext, quantity: int) -> float:
 
 def max_affordable_quantity(ctx: PurchasingContext) -> int:
     """Largest case multiple the remaining budget pays for (MOQ not applied)."""
-    units = math.floor(ctx.budget_available / ctx.supplier.unit_cost + _EPS)
+    units = max(0, math.floor(ctx.budget_available / ctx.supplier.unit_cost + _EPS))
     return (units // ctx.supplier.case_pack) * ctx.supplier.case_pack
 
 

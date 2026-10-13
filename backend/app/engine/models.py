@@ -45,7 +45,7 @@ class PurchasingContext(BaseModel):
     )
     open_purchase_orders: list[OpenPurchaseOrder] = Field(default_factory=list)
     supplier: SupplierTerms
-    budget_available: float = Field(ge=0)
+    budget_available: float = Field(description="Negative when the budget is overcommitted")
     storage_capacity: int = Field(ge=0, description="Max units of this SKU the node can hold")
 
 

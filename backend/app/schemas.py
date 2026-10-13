@@ -57,3 +57,31 @@ class PurchaseOrderOut(BaseModel):
     created_on: date
     created_by: str
     recommendation_id: str | None
+    revision: int
+    confirmed_quantity: int | None
+    confirmed_unit_cost: float | None
+    outstanding_quantity: int
+    value: float
+    committed_value: float
+    supplier_message: str | None
+    assumptions: dict[str, Any] | None
+    approval_status: str | None
+    approval_reasons: list[dict[str, Any]] | None
+    approval_by: str | None
+    approval_comment: str | None
+
+
+class PurchaseOrderEventOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    on: date
+    event: str
+    from_status: str | None
+    to_status: str | None
+    actor: str
+    detail: dict[str, Any] | None
+
+
+class PurchaseOrderDetail(PurchaseOrderOut):
+    events: list[PurchaseOrderEventOut]

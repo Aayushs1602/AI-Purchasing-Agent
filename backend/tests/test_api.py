@@ -3,6 +3,8 @@ from fastapi.testclient import TestClient
 
 from app.config import Settings
 from app.main import create_app
+from app.models import Recommendation
+from app.services.purchase_orders import PurchaseOrderService
 
 
 @pytest.fixture
@@ -82,3 +84,47 @@ def test_reset_reseeds(client):
 def test_reset_can_be_disabled(make_client):
     with make_client(allow_demo_reset=False) as client:
         assert client.post("/api/admin/reset").status_code == 403
+
+
+def _create_and_submit(client, rec_id):
+    app = client.app
+    with app.state.session_factory() as session:
+        service = PurchaseOrderService(session, today=app.state.settings.sim_today)
+        rec = session.get(Recommendation, rec_id)
+        po = service.create_draft(
+            sku=rec.sku,
+            node_id=rec.node_id,
+            supplier_id=rec.supplier_id,
+            quantity=rec.quantity,
+            created_by="agent",
+            recommendation_id=rec.id,
+        ).po
+        service.submit(po.id, actor="agent")
+        return po.id
+
+
+def test_purchase_order_detail_includes_its_event_log(client):
+    po_id = _create_and_submit(client, "REC-1011")  # supplier fills only 500 of 800
+
+    body = client.get(f"/api/purchase-orders/{po_id}").json()
+
+    assert (body["status"], body["quantity"], body["outstanding_quantity"]) == (
+        "partially_confirmed",
+        800,
+        500,
+    )
+    assert body["committed_value"] == 1250.0
+    assert "remaining 300" in body["supplier_message"]
+    assert [e["event"] for e in body["events"]] == ["created", "submitted", "acknowledged"]
+
+
+def test_purchase_orders_filter_by_recommendation(client):
+    po_id = _create_and_submit(client, "REC-1001")
+
+    pos = client.get("/api/purchase-orders", params={"recommendation_id": "REC-1001"}).json()
+
+    assert [po["id"] for po in pos] == [po_id]
+
+
+def test_unknown_purchase_order_is_404(client):
+    assert client.get("/api/purchase-orders/PO-404").status_code == 404

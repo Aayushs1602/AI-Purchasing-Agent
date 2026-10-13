@@ -18,6 +18,7 @@ from app.models import (
     Node,
     Product,
     PurchaseOrder,
+    PurchaseOrderEvent,
     Recommendation,
     SalesRecord,
     Supplier,
@@ -54,16 +55,38 @@ class PurchaseOrderAdmin(ReadOnlyView, model=PurchaseOrder):
     column_list = [
         PurchaseOrder.id,
         PurchaseOrder.sku,
-        PurchaseOrder.supplier_id,
-        PurchaseOrder.quantity,
-        PurchaseOrder.unit_cost,
         PurchaseOrder.status,
+        PurchaseOrder.revision,
+        PurchaseOrder.quantity,
+        PurchaseOrder.confirmed_quantity,
+        PurchaseOrder.unit_cost,
+        PurchaseOrder.confirmed_unit_cost,
+        PurchaseOrder.committed_value,
+        PurchaseOrder.approval_status,
         PurchaseOrder.eta,
         PurchaseOrder.created_by,
         PurchaseOrder.recommendation_id,
     ]
     column_searchable_list = [PurchaseOrder.id, PurchaseOrder.sku, PurchaseOrder.status]
     column_sortable_list = [PurchaseOrder.id, PurchaseOrder.status, PurchaseOrder.eta]
+
+
+class PurchaseOrderEventAdmin(ReadOnlyView, model=PurchaseOrderEvent):
+    name = "PO event"
+    icon = "fa-solid fa-clock-rotate-left"
+    column_list = [
+        PurchaseOrderEvent.id,
+        PurchaseOrderEvent.po_id,
+        PurchaseOrderEvent.event,
+        PurchaseOrderEvent.from_status,
+        PurchaseOrderEvent.to_status,
+        PurchaseOrderEvent.actor,
+        PurchaseOrderEvent.detail,
+        PurchaseOrderEvent.on,
+    ]
+    column_searchable_list = [PurchaseOrderEvent.po_id, PurchaseOrderEvent.event]
+    column_sortable_list = [PurchaseOrderEvent.id, PurchaseOrderEvent.po_id]
+    column_default_sort = [(PurchaseOrderEvent.id, True)]
 
 
 class InventoryAdmin(ReadOnlyView, model=InventoryRecord):
@@ -159,6 +182,7 @@ class NodeAdmin(ReadOnlyView, model=Node):
 VIEWS = [
     RecommendationAdmin,
     PurchaseOrderAdmin,
+    PurchaseOrderEventAdmin,
     InventoryAdmin,
     SupplierTermAdmin,
     BudgetAdmin,

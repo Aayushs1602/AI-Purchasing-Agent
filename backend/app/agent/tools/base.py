@@ -73,6 +73,10 @@ class RunContext:
     max_repairs: int = 2
     deviations: dict[str, int] = field(default_factory=dict)
     circuit_open: bool = False
+    # Every number a tool returned in this run: cited key factors must come from here.
+    observed_numbers: set[float] = field(default_factory=set)
+    finalize_rejections: int = 0
+    review_issues: list[str] = field(default_factory=list)
 
     def purchasing_context(self) -> PurchasingContext:
         rec = self.recommendation
@@ -110,6 +114,20 @@ def error(code: str, message: str, details: dict[str, Any] | None = None) -> dic
     if details:
         body["details"] = details
     return {"ok": False, "error": body}
+
+
+def collect_numbers(value: Any, into: set[float]) -> None:
+    """Gather every number in a tool result (bools excluded), for grounding checks."""
+    if isinstance(value, bool):
+        return
+    if isinstance(value, int | float):
+        into.add(float(value))
+    elif isinstance(value, dict):
+        for item in value.values():
+            collect_numbers(item, into)
+    elif isinstance(value, list):
+        for item in value:
+            collect_numbers(item, into)
 
 
 def untrusted(text: str | None, source: str) -> dict[str, str] | None:

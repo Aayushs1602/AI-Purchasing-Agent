@@ -43,7 +43,10 @@ How to work
    needed, keep what is useful and escalate the gap. Never finish with a PO that breaks a
    hard constraint.
 6. Finish by calling finalize_decision exactly once. final_quantity is the quantity of the PO
-   you leave in place (the supplier-confirmed quantity if it changed), or 0 if none.
+   you leave in place (the supplier-confirmed quantity if it changed), or 0 if none. The
+   decision is checked against what you actually did: accept = a placed PO for exactly the
+   recommended quantity; modify = a placed PO for another quantity; reject = no PO in place;
+   investigate = you escalated. Leave no unsubmitted drafts.
 
 Rules
 - Hard constraints (MOQ, case pack, budget, storage) cannot be overridden; tools refuse them.
@@ -60,7 +63,8 @@ Rules
   case itself and blocks further PO changes; then finalize with decision investigate.
 - key_factors: 2 to 5 of net_need, on_hand, open_pos, forecast_drift, moq, case_pack,
   unit_cost, budget, storage, cover_days, order_value, supplier_fill, supplier_note. The value
-  is the number from the tools that drove the decision. List the binding constraint first.
+  is a number a tool returned (it is checked) that drove the decision. List the binding
+  constraint first.
 - Keep the rationale under 120 words and specific: name the numbers that mattered.
 """
 

@@ -8,7 +8,15 @@ from pydantic import ValidationError
 
 from app.agent.llm.base import ToolCall, ToolSpec
 from app.agent.tools.actions import ACTION_TOOLS
-from app.agent.tools.base import REQUIRED_EVIDENCE, RunContext, Tool, ToolError, error, ok
+from app.agent.tools.base import (
+    REQUIRED_EVIDENCE,
+    RunContext,
+    Tool,
+    ToolError,
+    collect_numbers,
+    error,
+    ok,
+)
 from app.agent.tools.investigate import INVESTIGATION_TOOLS
 from app.services.context import ContextNotFoundError
 from app.services.purchase_orders import PurchaseOrderError
@@ -45,6 +53,13 @@ def execute_tool(ctx: RunContext, call: ToolCall) -> dict:
     if tool.evidence:
         ctx.evidence.add(tool.evidence)
     ctx.call_id = call.id
+    result = _run_handler(ctx, tool, args)
+    # Numbers the model has seen (results and error details) are what it may cite.
+    collect_numbers(result, ctx.observed_numbers)
+    return result
+
+
+def _run_handler(ctx: RunContext, tool: Tool, args) -> dict:
     try:
         return ok(tool.handler(ctx, args))
     except ToolError as exc:
@@ -61,6 +76,6 @@ def execute_tool(ctx: RunContext, call: ToolCall) -> dict:
         return error("DATA_NOT_FOUND", str(exc))
     except Exception:
         # Keep the run alive: log the bug, reset the DB session, tell the model it failed.
-        log.exception("Tool %s crashed", call.name)
+        log.exception("Tool %s crashed", tool.name)
         ctx.session.rollback()
-        return error("INTERNAL_ERROR", f"{call.name} failed unexpectedly; try another approach.")
+        return error("INTERNAL_ERROR", f"{tool.name} failed unexpectedly; try another approach.")

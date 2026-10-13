@@ -15,7 +15,13 @@ from typing import Any, Literal
 from pydantic import Field
 from sqlalchemy import func, select
 
-from app.agent.checks import ActionExpectation, OutcomeCheck, check_outcome
+from app.agent.checks import (
+    ActionExpectation,
+    OutcomeCheck,
+    check_outcome,
+    decision_problems,
+    grounding_problems,
+)
 from app.agent.tools.base import RunContext, Tool, ToolArgs, ToolError, untrusted
 from app.agent.tools.investigate import assumptions_for
 from app.engine.models import Assumptions, Decision, Factor
@@ -338,6 +344,21 @@ def finalize_decision(ctx: RunContext, args: FinalizeArgs) -> dict:
     require_evidence(ctx)
     if ctx.finalized:
         raise ToolError("ALREADY_FINALIZED", "This run already has a final decision.")
+
+    problems = decision_problems(ctx, args.decision, args.final_quantity) + grounding_problems(
+        ctx, args.key_factors
+    )
+    if problems and ctx.finalize_rejections == 0:
+        ctx.finalize_rejections += 1
+        raise ToolError(
+            "FINALIZE_REJECTED",
+            "The decision does not match what happened, or cites numbers no tool returned. "
+            "Fix the problems (or the PO) and call finalize_decision again.",
+            {"problems": problems},
+        )
+    # Second time round: record what the agent decided, but flag it for a human to review.
+    ctx.review_issues = problems
+
     run = ctx.run
     run.decision = args.decision
     run.final_quantity = args.final_quantity
@@ -347,7 +368,7 @@ def finalize_decision(ctx: RunContext, args: FinalizeArgs) -> dict:
     run.risks = args.risks
     ctx.session.commit()
     ctx.finalized = True
-    return {"recorded": True, "decision": args.decision}
+    return {"recorded": True, "decision": args.decision, "flagged_for_review": problems or None}
 
 
 ACTION_TOOLS = [

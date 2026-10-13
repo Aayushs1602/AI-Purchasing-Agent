@@ -4,6 +4,9 @@ Expectation vs outcome: every PO action carries what the agent expects (quantity
 arrival, cover). After the action, the system reads the PO back, as stored or as the supplier
 confirmed it, and reports each difference. The agent must react to UNEXPECTED_OUTCOME; it
 cannot simply carry on with a plan the world has invalidated.
+
+Final decision: before a decision is recorded, its label must match what the run actually left
+behind (consistency), and every number it cites must be one a tool returned (grounding).
 """
 
 from __future__ import annotations
@@ -12,10 +15,11 @@ from datetime import date
 from typing import Any, Literal
 
 from pydantic import BaseModel, Field
+from sqlalchemy import select
 
-from app.agent.tools.base import ToolArgs
+from app.agent.tools.base import RunContext, ToolArgs
 from app.engine.policy import QuantityEvaluation
-from app.models import PurchaseOrder
+from app.models import Escalation, PurchaseOrder
 
 
 class ActionExpectation(ToolArgs):
@@ -150,3 +154,97 @@ def _next_actions(*, sent: bool, violations: list[str]) -> list[str]:
     if not violations:
         actions.append("accept the deviation and explain it in finalize_decision")
     return actions
+
+
+# --- Final decision ----------------------------------------------------------------------
+
+PLACED_STATUSES = ("pending_approval", "submitted", "confirmed", "partially_confirmed")
+
+
+def decision_problems(ctx: RunContext, decision: str, final_quantity: int) -> list[str]:
+    """Does the decision label match what the run actually left in the database?"""
+    run_pos = ctx.session.scalars(
+        select(PurchaseOrder).where(PurchaseOrder.run_id == ctx.run.id)
+    ).all()
+    escalated = ctx.session.scalar(select(Escalation).where(Escalation.run_id == ctx.run.id))
+    placed = next((po for po in run_pos if po.status in PLACED_STATUSES), None)
+    left = placed.outstanding_quantity if placed else 0
+    recommended = ctx.recommendation.quantity
+    problems = [
+        f"{po.id} is still a draft: submit it or cancel it before finalizing."
+        for po in run_pos
+        if po.status == "draft"
+    ]
+
+    if final_quantity != left:
+        where = f"{placed.id} has {left} units" if placed else "no PO is left in place"
+        problems.append(f"final_quantity is {final_quantity} but {where}.")
+
+    if decision == "accept":
+        if placed is None:
+            problems.append(f"accept needs a placed PO for the recommended {recommended} units.")
+        elif left != recommended:
+            problems.append(
+                f"accept means the recommended {recommended} units, but {placed.id} has {left}; "
+                "use modify or investigate."
+            )
+    elif decision == "modify":
+        if placed is None:
+            problems.append("modify needs a placed PO; none was placed. Use reject or investigate.")
+        elif left == recommended:
+            problems.append(
+                f"{placed.id} has exactly the recommended {recommended} units: that is accept."
+            )
+    elif decision == "reject":
+        if placed is not None:
+            problems.append(
+                f"reject means no order, but {placed.id} ({placed.status}) is still in place: "
+                "cancel it or choose another decision."
+            )
+    elif decision == "investigate" and escalated is None:
+        problems.append("investigate requires escalate_to_human with your questions first.")
+
+    if ctx.circuit_open and decision != "investigate":
+        problems.append(
+            "The circuit breaker escalated this case: the decision must be investigate."
+        )
+
+    if placed is not None and escalated is None:
+        violations = [f.code for f in ctx.po_service.revalidate(placed).hard_violations]
+        if violations:
+            problems.append(
+                f"{placed.id} breaks hard constraints ({', '.join(violations)}): amend, cancel or "
+                "escalate it before finalizing."
+            )
+    return problems
+
+
+def _as_number(value: Any) -> float | None:
+    if isinstance(value, bool):
+        return None
+    if isinstance(value, int | float):
+        return float(value)
+    cleaned = str(value)
+    for token in ("$", ",", "%", "units", "days", " "):
+        cleaned = cleaned.replace(token, "")
+    try:
+        return float(cleaned)
+    except ValueError:
+        return None  # qualitative value, e.g. "ignored"
+
+
+def grounding_problems(ctx: RunContext, key_factors: list[Any]) -> list[str]:
+    """Every number the agent cites must be one some tool returned during this run."""
+    problems = []
+    for factor in key_factors:
+        value = _as_number(factor.value)
+        if value is None:
+            continue
+        if not any(
+            abs(value - seen) <= max(0.01, 0.005 * abs(seen)) for seen in ctx.observed_numbers
+        ):
+            problems.append(
+                f"key factor {factor.factor}={factor.value} does not match any number the tools "
+                "returned in this run."
+            )
+    return problems

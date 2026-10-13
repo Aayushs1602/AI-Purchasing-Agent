@@ -271,7 +271,10 @@ class AgentRunner:
         escalated = session.scalar(
             select(Escalation).where(Escalation.run_id == run.id, Escalation.status == "open")
         )
-        if pending is not None:
+        if ctx.review_issues:
+            run.status = "needs_review"
+            run.validation_issues = ctx.review_issues
+        elif pending is not None:
             run.status = "awaiting_approval"
         elif escalated is not None or run.decision == "investigate":
             run.status = "escalated"

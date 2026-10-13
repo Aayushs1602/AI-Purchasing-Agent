@@ -30,7 +30,7 @@ class Base(DeclarativeBase):
 
 # Bump whenever a table or column changes. On startup a database stamped with another
 # version is rebuilt from the scenarios (demo data only; production would use migrations).
-SCHEMA_VERSION = 3
+SCHEMA_VERSION = 4
 
 
 class SchemaInfo(Base):
@@ -250,6 +250,8 @@ class AgentRun(Base):
     prompt_tokens: Mapped[int] = mapped_column(Integer, default=0)
     output_tokens: Mapped[int] = mapped_column(Integer, default=0)
     error: Mapped[str | None] = mapped_column(Text, default=None)
+    # Problems the final-decision checks still found after the agent's retry (needs_review).
+    validation_issues: Mapped[list[str] | None] = mapped_column(JSON, default=None)
     # Provider-native conversation, kept so a paused run can resume where it stopped.
     history: Mapped[list[dict[str, Any]] | None] = mapped_column(JSON, default=None)
     # Wall-clock times (real, not simulated): they measure how long the agent took.

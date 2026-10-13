@@ -10,8 +10,10 @@ then grades **what is in the database afterwards**, against labels written by ha
 `expect` block: the acceptable outcomes (decision, PO quantity range, whether a human must
 approve) and the factors a rationale must cite. Labels 1-13 were committed in the data phase,
 before the agent existed; label 14 was added after the first live evaluation and committed
-before any run of it. The engine computes facts but never labels, so nothing is graded against
-itself.
+before any run of it. The approval labels of scenarios 2, 5 and 10 changed later, together
+with the approval policy (see [the policy change](#after-the-live-rounds-every-quantity-change-needs-a-buyer));
+no decision or quantity label did. The engine computes facts but never labels, so nothing is
+graded against itself.
 
 **A harness that plays the world.** `evals/harness.py` gives every case a fresh database, runs
 `AgentRunner` exactly as the API does, and plays the human: every PO that reaches the approval
@@ -130,6 +132,26 @@ check, and it is a single scenario. The other 11 scenarios were not re-run with 
 prompt because of the free tier's daily quota; their results above come from round 1. The
 next step is a full 14-scenario run with the current prompt, which `python -m evals.run
 --mode live --repeats 3` does in about 20 minutes.
+
+### After the live rounds: every quantity change needs a buyer
+
+The approval policy was tightened after both rounds, at the buyer's request: any quantity other
+than the recommended one now needs approval (`QUANTITY_CHANGED`). Before, a change went out on
+its own when no other rule fired; scenario 2's 480 units, for example, was sent straight to the
+supplier. The approval labels of scenarios 2, 5 and 10 changed with the policy, and the prompt
+now says every modify goes to a buyer and that keeping the recommended quantity to avoid
+approval is not allowed either.
+
+| Check under the new policy | Result |
+|---|---|
+| Golden trajectories, scripted | 14/14 right |
+| Replay of all 14 recordings | 14/14 right, approval routing 14/14 |
+| Live Gemini, the three relabelled scenarios x 1 ([live-approval-policy.md](../backend/evals/reports/live-approval-policy.md)) | 3/3 right: modify 480, 700 and 740, each sent only after approval |
+
+Rounds 1 and 2 above were scored under the previous policy and labels and are left as they
+were. The replays show every recorded decision still ends right once code routes it to a buyer,
+but most recordings were made with the earlier prompt; a full live re-run with the current
+prompt is still the next step.
 
 ## Limits of this evaluation
 

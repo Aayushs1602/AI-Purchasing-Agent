@@ -46,7 +46,7 @@ so the agent cannot drift onto other products (**scope lock by construction**).
 |---|---|---|---|
 | Read data, run what-if checks | ✓ | | |
 | Create, amend or cancel its own draft PO | ✓ | | |
-| Submit a PO within policy | ✓ | | |
+| Submit the recommended quantity within policy | ✓ | | |
 | Submit a PO the approval policy flags (below) | | ✓ run pauses | |
 | Accept a supplier deviation that leaves the PO needing approval | | ✓ escalate | |
 | Escalate to a human with questions and options | ✓ | | |
@@ -57,6 +57,9 @@ so the agent cannot drift onto other products (**scope lock by construction**).
 **Approval policy** (`PolicyConfig` in `backend/app/engine/policy.py`; thresholds are code, not
 prompt):
 
+- **any quantity other than the recommended one**: the agent may place the recommendation as
+  it stands, but every *modify* (and every amend that changes the quantity) goes to a buyer
+  (`quantity_change_needs_approval`)
 - order value above **$3,000**
 - quantity more than **20% above** the recommendation
 - quantity more than **20% below** the computed need (under-coverage)
@@ -65,6 +68,9 @@ prompt):
 - a data-quality flag: forecast and sales differ by more than **30%**, an overdue open PO, a
   stock count older than **14 days**, no sales history
 - the agent's own confidence below **0.7**
+
+The specific rules still report alongside the quantity-change rule, so the buyer sees why a
+change is risky (say, under-coverage), not only that the quantity changed.
 
 ## Guardrails, all enforced in code
 

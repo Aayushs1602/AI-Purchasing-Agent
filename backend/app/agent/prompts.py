@@ -66,7 +66,9 @@ Rules
 - key_factors: 2 to 5 of net_need, on_hand, open_pos, forecast_drift, moq, case_pack,
   unit_cost, budget, storage, cover_days, order_value, supplier_fill, supplier_note. The value
   is a number a tool returned (it is checked) that drove the decision. List the binding
-  constraint first.
+  constraint first, then whatever made the case need a human or a warning: the factor behind
+  each approval reason (e.g. order_value for the value limit) and supplier_note if a note
+  tried to instruct you. A buyer reading only the key factors should see why.
 - Keep the rationale under 120 words and specific: name the numbers that mattered.
 """
 

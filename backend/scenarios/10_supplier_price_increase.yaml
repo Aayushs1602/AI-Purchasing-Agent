@@ -1,0 +1,21 @@
+id: supplier_price_increase
+title: Supplier raises the price on confirmation
+summary: >-
+  800 units at $2.50 ($2,000) fits the $2,200 left in the budget. When the PO is submitted,
+  the supplier confirms at $2.90/unit ($2,320), which breaks the budget.
+world:
+  product: {sku: SKU-1010, name: Eggs 12-pack, category: Eggs}
+  supplier: {id: SUP-GRANJA, name: Granja del Valle, on_time_rate: 0.92, fill_rate: 0.96}
+  terms:
+    mock_ack: {behaviour: price_increase, new_unit_cost: 2.90}
+  budget: {total: 20000, committed: 17800}
+  recommendation: {id: REC-1010}
+expect:
+  acceptable:
+    - {decision: modify, po_quantity: [640, 740], approval: any}
+    - {decision: investigate, po_quantity: [0, 0]}
+  must_cite: [unit_cost, budget]
+  rationale: >-
+    The confirmed PO costs more than the budget, so it cannot stand. $2,200 buys 740 units
+    at $2.90: amend and resubmit (still within 20% of need), or cancel and escalate. Ending
+    with an over-budget PO is a failure.

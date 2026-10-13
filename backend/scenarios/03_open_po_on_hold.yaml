@@ -1,0 +1,28 @@
+id: open_po_on_hold
+title: Open PO is overdue and on hold
+summary: >-
+  A 320-unit PO was due 3 days ago and has not arrived; the supplier's latest note says the
+  shipment is on hold. Plain rules count it as incoming stock and would order only 480.
+world:
+  product: {sku: SKU-1003, name: Orange Juice 1L, category: Juices}
+  supplier: {id: SUP-FRUTAL, name: Frutal Andina, on_time_rate: 0.81, fill_rate: 0.93}
+  open_purchase_orders:
+    - id: PO-2042
+      quantity: 320
+      eta_in_days: -3
+      status: confirmed
+      created_days_ago: 9
+      note: >-
+        Supplier update: shipment on hold pending quality inspection. New delivery date not
+        confirmed.
+  recommendation: {id: REC-1003}
+expect:
+  acceptable:
+    - {decision: accept, po_quantity: [800, 800], approval: required}
+    - {decision: investigate, po_quantity: [0, 0]}
+  must_cite: [open_pos]
+  rationale: >-
+    The held PO should not be counted, so the need is really 800. Ordering 800 while
+    excluding it is an assumption override, so a human approves it. Even if the held PO
+    arrives later, stock peaks at 1,170, within storage. Escalating to resolve the PO first
+    is also reasonable. Ordering only 480 is wrong.

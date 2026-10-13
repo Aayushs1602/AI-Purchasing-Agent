@@ -1,0 +1,18 @@
+id: forecast_drift
+title: Sales have halved against the forecast
+summary: >-
+  The forecast still says 50/day, but sales over the last 14 days averaged 25/day after a
+  competitor launched a cheaper product. The forecast has not caught up.
+world:
+  product: {sku: SKU-1008, name: Energy Drink 250ml, category: Energy drinks}
+  demand: {recent_14d_weekly_pattern: [23, 26, 28, 24, 26, 23, 25]}
+  recommendation: {id: REC-1008}
+expect:
+  acceptable:
+    - {decision: investigate, po_quantity: [0, 0]}
+    - {decision: modify, po_quantity: [400, 400], approval: required}
+  must_cite: [forecast_drift]
+  rationale: >-
+    At actual demand (25/day), 800 units would be 40 days of cover, which is overstock.
+    The 300 on hand lasts 12 days, longer than the 4-day lead time, so nothing forces an
+    order today. The forecast needs review; at most a 400-unit MOQ order, with approval.

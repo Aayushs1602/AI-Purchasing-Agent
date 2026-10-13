@@ -1,0 +1,17 @@
+id: overstock_stale_rec
+title: Stock arrived after the recommendation was made
+summary: >-
+  The recommendation was computed 2 days ago, when on-hand was 300. A 950-unit delivery has
+  been received since then, and on-hand is now 1,150.
+world:
+  product: {sku: SKU-1007, name: Potato Chips 150g, category: Snacks}
+  supplier: {id: SUP-CENTRAL, name: Central Mayorista, on_time_rate: 0.94, fill_rate: 0.97}
+  inventory: {on_hand: 1150, counted_days_ago: 0}
+  recommendation: {id: REC-1007, created_days_ago: 2}
+expect:
+  acceptable:
+    - {decision: reject, po_quantity: [0, 0]}
+  must_cite: [on_hand]
+  rationale: >-
+    1,150 on hand already exceeds the order-up-to level of 1,100, so nothing is needed.
+    Ordering 800 would peak at 1,750 units, far over 1,200 storage.

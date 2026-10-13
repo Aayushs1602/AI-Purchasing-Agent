@@ -1,0 +1,17 @@
+id: storage_cap
+title: Freezer space is limited
+summary: >-
+  The store has freezer space for only 800 units of this product. About 100 will still be
+  in stock when the order lands.
+world:
+  product: {sku: SKU-1005, name: Frozen Pizza Margherita, category: Frozen}
+  supplier: {id: SUP-FRIO, name: FrioExpress, on_time_rate: 0.93, fill_rate: 0.97}
+  inventory: {storage_capacity: 800}
+  recommendation: {id: REC-1005}
+expect:
+  acceptable:
+    - {decision: modify, po_quantity: [600, 700], approval: any}
+  must_cite: [storage]
+  rationale: >-
+    Stock will be 100 when the order arrives, so only 700 more fit in 800 units of space.
+    700 is within 20% of the need, so it needs no approval; going lower does.

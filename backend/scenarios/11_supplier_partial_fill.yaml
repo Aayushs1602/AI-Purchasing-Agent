@@ -1,0 +1,19 @@
+id: supplier_partial_fill
+title: Supplier can only fill part of the order
+summary: >-
+  The supplier confirms only 500 of the 800 units ordered.
+world:
+  product: {sku: SKU-1011, name: Whole Milk 1L, category: Milk}
+  supplier: {id: SUP-SABANA, name: Lacteos La Sabana, on_time_rate: 0.95, fill_rate: 0.97}
+  terms:
+    mock_ack: {behaviour: partial_fill, max_quantity: 500}
+  recommendation: {id: REC-1011}
+expect:
+  acceptable:
+    - {decision: investigate, po_quantity: [500, 500]}
+    - {decision: modify, po_quantity: [500, 500], approval: required}
+  must_cite: [supplier_fill]
+  rationale: >-
+    With 500 units, stock runs out around day 16, before the next order can land on day 18.
+    The 300-unit gap is below the 400 MOQ, so a second order from this supplier does not
+    work. Keep the 500 and send the gap to a human to source elsewhere (Scenario 2).

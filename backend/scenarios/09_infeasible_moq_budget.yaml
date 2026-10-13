@@ -1,0 +1,17 @@
+id: infeasible_moq_budget
+title: Minimum order exceeds the remaining budget
+summary: >-
+  The supplier's minimum is 1,000 units ($2,500), but only $2,000 is left in the budget.
+world:
+  product: {sku: SKU-1009, name: Toilet Paper 4-pack, category: Household}
+  supplier: {id: SUP-CENTRAL, name: Central Mayorista, on_time_rate: 0.94, fill_rate: 0.97}
+  terms: {moq: 1000}
+  budget: {total: 20000, committed: 18000}
+  recommendation: {id: REC-1009}
+expect:
+  acceptable:
+    - {decision: investigate, po_quantity: [0, 0]}
+  must_cite: [moq, budget]
+  rationale: >-
+    No valid order exists: $2,000 buys 800 units, below the 1,000 MOQ. A human needs to
+    choose: raise the budget by $500, negotiate the MOQ, or use another supplier.

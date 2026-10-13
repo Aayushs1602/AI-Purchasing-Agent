@@ -1,0 +1,15 @@
+id: accept_baseline
+title: Recommendation checks out
+summary: >-
+  Nothing has changed since the recommendation was made. Stock, demand, supplier terms,
+  budget and storage all support buying exactly 800 units.
+world:
+  product: {sku: SKU-1001, name: Sparkling Water 500ml 6-pack, category: Water}
+  recommendation: {id: REC-1001}
+expect:
+  acceptable:
+    - {decision: accept, po_quantity: [800, 800], approval: not_required}
+  must_cite: []
+  rationale: >-
+    Need is exactly 800 and every constraint has headroom: $2,000 of $5,000 budget, stock
+    peaks at 900 of 1,200 storage, 18 days of cover. $2,000 is under the auto-approve limit.

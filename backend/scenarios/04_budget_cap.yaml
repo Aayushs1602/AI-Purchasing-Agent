@@ -1,0 +1,17 @@
+id: budget_cap
+title: Category budget nearly spent
+summary: >-
+  Only $1,500 is left in this month's yogurt budget, which buys 600 units at $2.50, not
+  the 800 recommended.
+world:
+  product: {sku: SKU-1004, name: Greek Yogurt 4-pack, category: Yogurt}
+  supplier: {id: SUP-SABANA, name: Lacteos La Sabana, on_time_rate: 0.95, fill_rate: 0.97}
+  budget: {total: 20000, committed: 18500}
+  recommendation: {id: REC-1004}
+expect:
+  acceptable:
+    - {decision: modify, po_quantity: [600, 600], approval: required}
+  must_cite: [budget]
+  rationale: >-
+    $1,500 buys at most 600 units (30 cases). That is 25% below the need of 800, so the
+    shortfall goes to a human, who can also decide whether to raise the budget.

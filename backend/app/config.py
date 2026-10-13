@@ -23,6 +23,7 @@ class Settings(BaseSettings):
     cors_origins: str = "http://localhost:5173"
 
     database_url: str = f"sqlite:///{(BACKEND_DIR / 'purchasing.db').as_posix()}"
+    scenarios_dir: Path = BACKEND_DIR / "scenarios"
     # Simulated "today". Fixed so forecasts, ETAs and sales windows never drift between runs.
     sim_today: date = date(2026, 10, 1)
 

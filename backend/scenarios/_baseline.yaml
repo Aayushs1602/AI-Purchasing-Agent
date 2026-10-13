@@ -1,0 +1,47 @@
+# Baseline world: the recommended 800 units is exactly right.
+#
+#   demand 50/day, lead time 4, review period 14, safety stock 200
+#     -> order-up-to = 50 * (4 + 14) + 200 = 1,100
+#   on hand 300, nothing on order
+#     -> need = 800 (40 cases of 20, above the MOQ of 400)
+#   $2.50/unit -> $2,000 against $5,000 available (auto-approve limit $3,000)
+#   stock is 100 when the order lands -> peaks at 900 of 1,200 storage, 18 days of cover
+#
+# Every numbered scenario file overrides only what makes it different (deep merge;
+# lists replace). Dates are relative to the simulated "today" (SIM_TODAY).
+world:
+  node: {id: DS-BOG-01, name: Chapinero dark store, city: Bogota}
+  product: {sku: SKU-0000, name: Baseline product, category: Baseline}
+  supplier: {id: SUP-ANDES, name: Distribuidora Andes, on_time_rate: 0.96, fill_rate: 0.98}
+  terms:
+    lead_time_days: 4
+    moq: 400
+    case_pack: 20
+    unit_cost: 2.50
+    note: null
+    mock_ack: {behaviour: confirm}
+  inventory:
+    on_hand: 300
+    reserved: 0
+    safety_stock: 200
+    storage_capacity: 1200
+    review_period_days: 14
+    counted_days_ago: 2
+  demand:
+    forecast_per_day: 50
+    forecast_days: 60
+    sales_days: 28
+    sales_weekly_pattern: [46, 52, 55, 49, 51, 47, 50]  # averages exactly 50/day
+    recent_14d_weekly_pattern: null
+  open_purchase_orders: []
+  budget: {total: 20000, committed: 15000}  # $5,000 available this month
+  recommendation:
+    id: REC-0000
+    quantity: 800
+    created_days_ago: 0
+    source: replenishment-engine-v1
+    method: >-
+      Order-up-to: forecast demand over lead time + review period (18 days) plus safety
+      stock, minus on-hand stock. Does not net open purchase orders and does not check
+      budget or storage capacity.
+    inputs: {on_hand: 300, open_po_units: 0, daily_demand_rate: 50}

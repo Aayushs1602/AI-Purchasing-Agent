@@ -1,0 +1,17 @@
+id: high_value_approval
+title: Order value needs a buyer's sign-off
+summary: >-
+  800 units is the right quantity, but at $4.50/unit the PO is worth $3,600, above the
+  $3,000 auto-approve limit.
+world:
+  product: {sku: SKU-1012, name: Ground Coffee 250g, category: Coffee}
+  supplier: {id: SUP-TOSTADO, name: Tostadores Unidos, on_time_rate: 0.97, fill_rate: 0.99}
+  terms: {unit_cost: 4.50}
+  recommendation: {id: REC-1012}
+expect:
+  acceptable:
+    - {decision: accept, po_quantity: [800, 800], approval: required}
+  must_cite: [order_value]
+  rationale: >-
+    The quantity is right and fits the $5,000 budget, but $3,600 is above the auto-approve
+    limit. The run should pause for a human and resume once approved.

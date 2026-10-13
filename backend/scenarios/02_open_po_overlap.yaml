@@ -1,0 +1,17 @@
+id: open_po_overlap
+title: Recommendation ignored an open PO
+summary: >-
+  A confirmed PO for 320 units arrives in 2 days. The replenishment engine does not net open
+  POs, so it over-recommends. On top of that PO, 800 more units would also overflow storage.
+world:
+  product: {sku: SKU-1002, name: Cola 350ml 6-pack, category: Soft drinks}
+  open_purchase_orders:
+    - {id: PO-2041, quantity: 320, eta_in_days: 2, status: confirmed, created_days_ago: 2}
+  recommendation: {id: REC-1002}
+expect:
+  acceptable:
+    - {decision: modify, po_quantity: [480, 500], approval: not_required}
+  must_cite: [open_pos]
+  rationale: >-
+    Inventory position is 620 (300 on hand + 320 on order), so the need is 480. Ordering 800
+    would peak at 1,220 units, over the 1,200 storage capacity. One extra case (500) is fine.

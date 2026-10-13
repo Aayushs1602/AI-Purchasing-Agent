@@ -1,0 +1,16 @@
+id: moq_roundup
+title: Supplier minimum is above the need
+summary: >-
+  The supplier's minimum order is 1,000 units, above the 800 needed.
+world:
+  product: {sku: SKU-1006, name: Instant Noodles 5-pack, category: Pantry}
+  supplier: {id: SUP-CENTRAL, name: Central Mayorista, on_time_rate: 0.94, fill_rate: 0.97}
+  terms: {moq: 1000}
+  recommendation: {id: REC-1006}
+expect:
+  acceptable:
+    - {decision: modify, po_quantity: [1000, 1000], approval: required}
+  must_cite: [moq]
+  rationale: >-
+    1,000 units costs $2,500, peaks at 1,100 of 1,200 storage and covers 22 days (max 25),
+    so it is acceptable. It is 25% above the recommendation, so a human signs off.

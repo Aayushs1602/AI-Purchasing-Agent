@@ -282,7 +282,12 @@ class AgentRunner:
 
         llm_session: LLMSession | None = None
         try:
-            llm_session = self._llm.new_session(SYSTEM_PROMPT, tool_specs(), history=history)
+            llm_session = self._llm.new_session(
+                SYSTEM_PROMPT,
+                tool_specs(),
+                history=history,
+                tags={"recommendation_id": rec.id, "scenario": rec.scenario, "run_id": run.id},
+            )
             self._loop(ctx, trace, llm_session, start(llm_session, ctx, trace))
         except LLMError as exc:
             log.warning("Run %s: LLM failed: %s", run.id, exc)

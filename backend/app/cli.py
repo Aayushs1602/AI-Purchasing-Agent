@@ -3,7 +3,12 @@
 python -m app.cli list                    # scenarios and their recommendations
 python -m app.cli run accept_baseline     # run the agent on a scenario (or a REC id)
 python -m app.cli run REC-1002 --reset    # restore demo data first
+python -m app.cli run high_value_approval --reset --approve --record
+                                          # approve if it pauses; save a recording
+python -m app.cli resume RUN-1A2B3C4D --decline --comment "wait for promo"
 python -m app.cli show RUN-1A2B3C4D       # print a past run's trace again
+
+Set LLM_PROVIDER=replay to play back recordings from backend/recordings (no API key).
 """
 
 from __future__ import annotations
@@ -11,13 +16,15 @@ from __future__ import annotations
 import argparse
 import json
 import sys
+from datetime import datetime, timezone
 from typing import Any
 
 from sqlalchemy import or_, select
 from sqlalchemy.orm import Session
 
 from app.agent.llm.factory import LLMConfigError, build_llm_client
-from app.agent.orchestrator import AgentConfig, AgentRunner, RunConflictError
+from app.agent.llm.recording import RecordingClient
+from app.agent.orchestrator import AgentConfig, AgentRunner, RunConflictError, RunNotPausedError
 from app.config import get_settings
 from app.db import make_engine, make_session_factory
 from app.models import AgentRun, AgentStep, PurchaseOrder, Recommendation
@@ -34,6 +41,13 @@ def main(argv: list[str] | None = None) -> int:
     run_parser = sub.add_parser("run", help="Run the agent on a scenario or recommendation")
     run_parser.add_argument("target", help="Scenario id (e.g. accept_baseline) or REC id")
     run_parser.add_argument("--reset", action="store_true", help="Reset demo data first")
+    run_parser.add_argument(
+        "--record", action="store_true", help="Save the model's turns for replay"
+    )
+    _approval_flags(run_parser, required=False)
+    resume_parser = sub.add_parser("resume", help="Approve or decline a paused run's PO")
+    resume_parser.add_argument("run_id")
+    _approval_flags(resume_parser, required=True)
     show_parser = sub.add_parser("show", help="Print the trace of a past run")
     show_parser.add_argument("run_id")
     args = parser.parse_args(argv)
@@ -58,6 +72,25 @@ def main(argv: list[str] | None = None) -> int:
             print_run(session, run)
         return 0
 
+    try:
+        llm = build_llm_client(settings)
+    except LLMConfigError as exc:
+        print(exc)
+        return 2
+
+    if args.command == "resume":
+        runner = _runner(factory, llm, settings)
+        try:
+            runner.resume(
+                args.run_id, approve=args.approve, approver=APPROVER, comment=args.comment
+            )
+        except RunNotPausedError as exc:
+            print(exc)
+            return 1
+        with factory() as session:
+            print_run(session, session.get(AgentRun, args.run_id))
+        return 0
+
     if args.reset:
         reset_database(engine, settings.scenarios_dir, settings.sim_today)
     with factory() as session:
@@ -70,26 +103,66 @@ def main(argv: list[str] | None = None) -> int:
         print(f"No scenario or recommendation '{args.target}'. Try: python -m app.cli list")
         return 1
 
-    try:
-        llm = build_llm_client(settings)
-    except LLMConfigError as exc:
-        print(exc)
-        return 2
-    runner = AgentRunner(
-        factory,
-        llm,
-        today=settings.sim_today,
-        config=AgentConfig(max_llm_calls=settings.agent_max_llm_calls),
-    )
+    if args.record:
+        llm = RecordingClient(llm)
+    runner = _runner(factory, llm, settings)
     print(f"Running {llm.provider}/{llm.model} on {rec.id} ({rec.scenario})...")
     try:
         run_id = runner.run(rec.id)
     except RunConflictError as exc:
         print(f"{exc}. Use --reset to start the scenario over.")
         return 1
+
+    approval = None
     with factory() as session:
-        print_run(session, session.get(AgentRun, run_id))
+        paused = session.get(AgentRun, run_id).status == "awaiting_approval"
+    if paused and (args.approve or args.decline):
+        approval = {"approve": args.approve, "comment": args.comment}
+        print(f"Run paused for approval; {'approving' if args.approve else 'declining'}...")
+        runner.resume(run_id, approve=args.approve, approver=APPROVER, comment=args.comment)
+    elif paused:
+        print(
+            f"Run paused for approval. Continue with: python -m app.cli resume {run_id} --approve"
+        )
+
+    with factory() as session:
+        run = session.get(AgentRun, run_id)
+        print_run(session, run)
+        if args.record:
+            path = settings.recordings_dir / f"{rec.scenario}.json"
+            llm.save(
+                path,
+                scenario=rec.scenario,
+                recommendation_id=rec.id,
+                recorded_at=datetime.now(timezone.utc).isoformat(timespec="seconds"),
+                approval=approval,
+                outcome={
+                    "status": run.status,
+                    "decision": run.decision,
+                    "final_quantity": run.final_quantity,
+                },
+            )
+            print(f"Recorded {len(llm.turns)} model turns to {path}")
     return 0
+
+
+APPROVER = "buyer:cli"
+
+
+def _approval_flags(parser: argparse.ArgumentParser, *, required: bool) -> None:
+    group = parser.add_mutually_exclusive_group(required=required)
+    group.add_argument("--approve", action="store_true", help="Approve the PO waiting for approval")
+    group.add_argument("--decline", action="store_true", help="Decline the PO waiting for approval")
+    parser.add_argument("--comment", default=None, help="Approver's comment")
+
+
+def _runner(factory, llm, settings) -> AgentRunner:
+    return AgentRunner(
+        factory,
+        llm,
+        today=settings.sim_today,
+        config=AgentConfig(max_llm_calls=settings.agent_max_llm_calls),
+    )
 
 
 # --- Output ------------------------------------------------------------------------------

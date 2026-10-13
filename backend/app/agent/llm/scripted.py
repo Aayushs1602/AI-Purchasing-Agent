@@ -33,6 +33,7 @@ class ScriptedClient:
         system_prompt: str,
         tools: list[ToolSpec],
         history: list[dict[str, Any]] | None = None,
+        tags: dict[str, str] | None = None,
     ) -> ScriptedSession:
         session = ScriptedSession(self, system_prompt, tools, list(history or []))
         self.sessions.append(session)

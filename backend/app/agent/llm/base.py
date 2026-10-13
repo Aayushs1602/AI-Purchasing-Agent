@@ -72,6 +72,10 @@ class LLMClient(Protocol):
         system_prompt: str,
         tools: list[ToolSpec],
         history: list[dict[str, Any]] | None = None,
+        tags: dict[str, str] | None = None,
     ) -> LLMSession:
-        """Start a conversation, or continue one from exported `history`."""
+        """Start a conversation, or continue one from exported `history`.
+
+        `tags` describe the run (recommendation, scenario, run id); providers may ignore them.
+        """
         ...

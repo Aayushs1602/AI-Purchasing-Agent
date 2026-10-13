@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from app.agent.llm.base import LLMClient
 from app.agent.llm.gemini import GeminiClient
+from app.agent.llm.recording import ReplayClient
 from app.config import Settings
 
 
@@ -26,4 +27,6 @@ def build_llm_client(settings: Settings) -> LLMClient:
             min_interval_seconds=settings.llm_min_interval_seconds,
             max_retries=settings.llm_max_retries,
         )
+    if settings.llm_provider == "replay":
+        return ReplayClient(settings.recordings_dir)
     raise LLMConfigError(f"Unknown LLM provider '{settings.llm_provider}'")

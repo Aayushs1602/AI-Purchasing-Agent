@@ -75,6 +75,7 @@ class GeminiClient:
         system_prompt: str,
         tools: list[ToolSpec],
         history: list[dict[str, Any]] | None = None,
+        tags: dict[str, str] | None = None,
     ) -> GeminiSession:
         config = types.GenerateContentConfig(
             system_instruction=system_prompt,

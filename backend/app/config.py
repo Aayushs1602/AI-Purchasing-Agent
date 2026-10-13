@@ -34,7 +34,9 @@ class Settings(BaseSettings):
     admin_ui_enabled: bool = True
 
     # --- LLM ---
-    llm_provider: Literal["gemini"] = "gemini"
+    # "replay" plays back recorded runs from recordings_dir: no API key needed.
+    llm_provider: Literal["gemini", "replay"] = "gemini"
+    recordings_dir: Path = BACKEND_DIR / "recordings"
     gemini_api_key: SecretStr | None = None  # SecretStr keeps the key out of logs and reprs
     gemini_model: str = "gemini-3.5-flash-lite"
     gemini_thinking_level: str = "low"

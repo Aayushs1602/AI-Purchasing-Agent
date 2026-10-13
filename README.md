@@ -28,7 +28,8 @@ short-ships, constraints that block the recommended purchase) along the way.
 - [Extending to Scenarios 2-4](#extending-to-scenarios-2-4)
 
 Deeper docs: [architecture](docs/architecture.md) ·
-[agent design](docs/agent-design.md) · [evaluation](docs/evaluation.md)
+[agent design](docs/agent-design.md) · [evaluation](docs/evaluation.md) ·
+[codebase guide](docs/codebase.md) (what every file does)
 
 ## Quick start
 
@@ -242,9 +243,11 @@ backend/
   evals/            harness, graders, golden trajectories, runner, reports/
   tests/            pytest (engine, data, PO, agent, API, evals)
 frontend/src/       React console: inbox, run trace, approvals
-docs/               architecture, agent design, evaluation
+docs/               architecture, agent design, evaluation, codebase guide
 .github/workflows/  CI: lint, tests, golden and replay evaluations
 ```
+
+Every file and component is described in [docs/codebase.md](docs/codebase.md).
 
 ## Limitations and security
 

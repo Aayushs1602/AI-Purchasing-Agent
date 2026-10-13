@@ -7,10 +7,20 @@ inserts related rows in one session flushes parents first.
 
 from __future__ import annotations
 
-from datetime import date
+from datetime import date, datetime
 from typing import Any
 
-from sqlalchemy import JSON, Date, Float, ForeignKey, Integer, String, Text, UniqueConstraint
+from sqlalchemy import (
+    JSON,
+    Date,
+    DateTime,
+    Float,
+    ForeignKey,
+    Integer,
+    String,
+    Text,
+    UniqueConstraint,
+)
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
 
@@ -20,7 +30,7 @@ class Base(DeclarativeBase):
 
 # Bump whenever a table or column changes. On startup a database stamped with another
 # version is rebuilt from the scenarios (demo data only; production would use migrations).
-SCHEMA_VERSION = 2
+SCHEMA_VERSION = 3
 
 
 class SchemaInfo(Base):
@@ -147,6 +157,8 @@ class PurchaseOrder(Base):
     recommendation_id: Mapped[str | None] = mapped_column(
         ForeignKey("recommendations.id"), default=None
     )
+    # The agent run that created this PO; agent tools may only touch their own run's POs.
+    run_id: Mapped[str | None] = mapped_column(ForeignKey("agent_runs.id"), default=None)
     revision: Mapped[int] = mapped_column(Integer, default=1)
     # What the supplier actually accepted (None until acknowledged).
     confirmed_quantity: Mapped[int | None] = mapped_column(Integer, default=None)
@@ -211,3 +223,66 @@ class Recommendation(Base):
     # Snapshot of what the source saw, so staleness can be detected.
     inputs: Mapped[dict[str, Any]] = mapped_column(JSON)
     status: Mapped[str] = mapped_column(String(24), default="open")
+
+
+class AgentRun(Base):
+    """One agent review of one recommendation, from kickoff to final decision."""
+
+    __tablename__ = "agent_runs"
+
+    id: Mapped[str] = mapped_column(String(32), primary_key=True)
+    recommendation_id: Mapped[str] = mapped_column(ForeignKey("recommendations.id"), index=True)
+    status: Mapped[str] = mapped_column(
+        String(24),
+        doc="queued | running | awaiting_approval | completed | escalated | failed | needs_review",
+    )
+    provider: Mapped[str] = mapped_column(String(24))
+    model: Mapped[str] = mapped_column(String(64))
+    decision: Mapped[str | None] = mapped_column(String(16), default=None)
+    final_quantity: Mapped[int | None] = mapped_column(Integer, default=None)
+    confidence: Mapped[float | None] = mapped_column(Float, default=None)
+    rationale: Mapped[str | None] = mapped_column(Text, default=None)
+    key_factors: Mapped[list[dict[str, Any]] | None] = mapped_column(JSON, default=None)
+    risks: Mapped[list[str] | None] = mapped_column(JSON, default=None)
+    # Evidence categories the agent fetched, checked by the evidence gate and by evals.
+    evidence: Mapped[list[str]] = mapped_column(JSON, default=list)
+    llm_calls: Mapped[int] = mapped_column(Integer, default=0)
+    prompt_tokens: Mapped[int] = mapped_column(Integer, default=0)
+    output_tokens: Mapped[int] = mapped_column(Integer, default=0)
+    error: Mapped[str | None] = mapped_column(Text, default=None)
+    # Provider-native conversation, kept so a paused run can resume where it stopped.
+    history: Mapped[list[dict[str, Any]] | None] = mapped_column(JSON, default=None)
+    # Wall-clock times (real, not simulated): they measure how long the agent took.
+    started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), default=None)
+
+
+class AgentStep(Base):
+    """Trace of a run: every model turn, tool call, guardrail intervention and system note."""
+
+    __tablename__ = "agent_steps"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    run_id: Mapped[str] = mapped_column(ForeignKey("agent_runs.id"), index=True)
+    seq: Mapped[int] = mapped_column(Integer)
+    kind: Mapped[str] = mapped_column(String(16), doc="llm | tool | guardrail | system")
+    name: Mapped[str | None] = mapped_column(String(64), default=None)
+    payload: Mapped[dict[str, Any]] = mapped_column(JSON)
+    duration_ms: Mapped[int | None] = mapped_column(Integer, default=None)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+
+class Escalation(Base):
+    """A question the agent hands to a human instead of acting."""
+
+    __tablename__ = "escalations"
+
+    id: Mapped[str] = mapped_column(String(32), primary_key=True)
+    run_id: Mapped[str] = mapped_column(ForeignKey("agent_runs.id"), index=True)
+    recommendation_id: Mapped[str] = mapped_column(ForeignKey("recommendations.id"))
+    severity: Mapped[str] = mapped_column(String(16))
+    reason: Mapped[str] = mapped_column(Text)
+    questions: Mapped[list[str]] = mapped_column(JSON)
+    options: Mapped[list[str]] = mapped_column(JSON)
+    status: Mapped[str] = mapped_column(String(16), default="open")
+    created_on: Mapped[date] = mapped_column(Date)

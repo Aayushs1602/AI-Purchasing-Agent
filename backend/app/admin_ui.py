@@ -12,8 +12,11 @@ from sqladmin import Admin, ModelView
 from sqlalchemy import Engine
 
 from app.models import (
+    AgentRun,
+    AgentStep,
     Budget,
     DemandForecast,
+    Escalation,
     InventoryRecord,
     Node,
     Product,
@@ -32,6 +35,58 @@ class ReadOnlyView(ModelView):
     can_delete = False
     can_export = True
     page_size = 50
+
+
+class AgentRunAdmin(ReadOnlyView, model=AgentRun):
+    name = "Agent run"
+    icon = "fa-solid fa-robot"
+    column_list = [
+        AgentRun.id,
+        AgentRun.recommendation_id,
+        AgentRun.status,
+        AgentRun.decision,
+        AgentRun.final_quantity,
+        AgentRun.confidence,
+        AgentRun.model,
+        AgentRun.llm_calls,
+        AgentRun.prompt_tokens,
+        AgentRun.started_at,
+        AgentRun.finished_at,
+    ]
+    column_searchable_list = [AgentRun.id, AgentRun.recommendation_id, AgentRun.status]
+    column_sortable_list = [AgentRun.started_at, AgentRun.status, AgentRun.recommendation_id]
+    column_default_sort = [(AgentRun.started_at, True)]
+
+
+class AgentStepAdmin(ReadOnlyView, model=AgentStep):
+    name = "Agent step"
+    icon = "fa-solid fa-shoe-prints"
+    column_list = [
+        AgentStep.run_id,
+        AgentStep.seq,
+        AgentStep.kind,
+        AgentStep.name,
+        AgentStep.duration_ms,
+        AgentStep.payload,
+    ]
+    column_searchable_list = [AgentStep.run_id, AgentStep.name, AgentStep.kind]
+    column_sortable_list = [AgentStep.run_id, AgentStep.seq]
+    column_default_sort = [(AgentStep.id, True)]
+
+
+class EscalationAdmin(ReadOnlyView, model=Escalation):
+    icon = "fa-solid fa-hand"
+    column_list = [
+        Escalation.id,
+        Escalation.recommendation_id,
+        Escalation.run_id,
+        Escalation.severity,
+        Escalation.status,
+        Escalation.reason,
+        Escalation.questions,
+        Escalation.options,
+    ]
+    column_searchable_list = [Escalation.recommendation_id, Escalation.run_id]
 
 
 class RecommendationAdmin(ReadOnlyView, model=Recommendation):
@@ -66,6 +121,7 @@ class PurchaseOrderAdmin(ReadOnlyView, model=PurchaseOrder):
         PurchaseOrder.eta,
         PurchaseOrder.created_by,
         PurchaseOrder.recommendation_id,
+        PurchaseOrder.run_id,
     ]
     column_searchable_list = [PurchaseOrder.id, PurchaseOrder.sku, PurchaseOrder.status]
     column_sortable_list = [PurchaseOrder.id, PurchaseOrder.status, PurchaseOrder.eta]
@@ -180,6 +236,9 @@ class NodeAdmin(ReadOnlyView, model=Node):
 
 
 VIEWS = [
+    AgentRunAdmin,
+    AgentStepAdmin,
+    EscalationAdmin,
     RecommendationAdmin,
     PurchaseOrderAdmin,
     PurchaseOrderEventAdmin,

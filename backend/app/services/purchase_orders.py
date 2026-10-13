@@ -125,6 +125,7 @@ class PurchaseOrderService:
         quantity: int,
         created_by: str,
         recommendation_id: str | None = None,
+        run_id: str | None = None,
         assumptions: Assumptions | None = None,
         idempotency_key: str | None = None,
         note: str | None = None,
@@ -174,6 +175,7 @@ class PurchaseOrderService:
             created_on=self.today,
             created_by=created_by,
             recommendation_id=recommendation_id,
+            run_id=run_id,
             assumptions=None if assumptions.is_default() else assumptions.model_dump(),
             idempotency_key=idempotency_key,
         )

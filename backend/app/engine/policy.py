@@ -57,6 +57,9 @@ class RecommendationInputs(BaseModel):
 
 class OrderLimits(BaseModel):
     min_valid_quantity: int = Field(description="Smallest order meeting MOQ and case pack")
+    order_for_need: int = Field(
+        description="Smallest valid order that covers the net need; 0 if nothing is needed"
+    )
     max_affordable_quantity: int = Field(description="Largest case multiple within budget")
     max_storable_quantity: int = Field(description="Largest case multiple within storage")
     max_feasible_quantity: int = Field(description="Largest valid order within both; 0 if none")
@@ -231,6 +234,9 @@ def order_limits(ctx: PurchasingContext, assumptions: Assumptions | None = None)
     supplier = ctx.supplier
     return OrderLimits(
         min_valid_quantity=im.min_valid_quantity(supplier.moq, supplier.case_pack),
+        order_for_need=im.round_up_to_valid(
+            im.net_need(ctx, assumptions), supplier.moq, supplier.case_pack
+        ),
         max_affordable_quantity=affordable,
         max_storable_quantity=storable,
         max_feasible_quantity=im.round_down_to_valid(

@@ -30,6 +30,7 @@ class TestBaseline:
         limits = order_limits(make_context())
 
         assert limits.min_valid_quantity == 400
+        assert limits.order_for_need == 800
         assert limits.max_affordable_quantity == 2000  # $5,000 / $2.50
         assert limits.max_storable_quantity == 1100  # 1,200 capacity - 100 on hand at arrival
         assert limits.max_feasible_quantity == 1100
@@ -57,6 +58,16 @@ class TestHardViolations:
 
         assert "OVER_STORAGE_CAPACITY" in codes(evaluate_quantity(ctx, 800).hard_violations)
         assert evaluate_quantity(ctx, 480).feasible
+        # The order that covers the need is 480, not the 400 MOQ.
+        assert evaluate_quantity(ctx, 800).limits.order_for_need == 480
+
+    def test_order_for_need_respects_moq_and_assumptions(self):
+        ctx = make_context(supplier={"moq": 1000}, recent_daily_sales=[50.0] * 14 + [25.0] * 14)
+        actuals = Assumptions(demand_basis="recent_actuals")
+
+        assert evaluate_quantity(ctx, 0).limits.order_for_need == 1000  # need 800 -> MOQ
+        assert order_limits(ctx, actuals).order_for_need == 1000  # need 350 -> MOQ
+        assert order_limits(make_context(on_hand=1150)).order_for_need == 0
 
     def test_budget_exactly_spent_is_allowed(self):
         assert evaluate_quantity(make_context(budget_available=2000), 800).feasible

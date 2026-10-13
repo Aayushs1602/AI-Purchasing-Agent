@@ -1,11 +1,13 @@
 """Application settings, read from environment variables and the repo-root `.env`."""
 
+from datetime import date
 from functools import lru_cache
 from pathlib import Path
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
+BACKEND_DIR = REPO_ROOT / "backend"
 
 
 class Settings(BaseSettings):
@@ -19,6 +21,10 @@ class Settings(BaseSettings):
     log_level: str = "INFO"
     # Comma-separated so it can be set from a single env var.
     cors_origins: str = "http://localhost:5173"
+
+    database_url: str = f"sqlite:///{(BACKEND_DIR / 'purchasing.db').as_posix()}"
+    # Simulated "today". Fixed so forecasts, ETAs and sales windows never drift between runs.
+    sim_today: date = date(2026, 10, 1)
 
     @property
     def cors_origin_list(self) -> list[str]:

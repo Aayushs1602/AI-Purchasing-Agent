@@ -26,6 +26,8 @@ class Settings(BaseSettings):
     scenarios_dir: Path = BACKEND_DIR / "scenarios"
     # Simulated "today". Fixed so forecasts, ETAs and sales windows never drift between runs.
     sim_today: date = date(2026, 10, 1)
+    # Lets POST /api/admin/reset wipe and reseed the database. Turn off outside demos.
+    allow_demo_reset: bool = True
 
     @property
     def cors_origin_list(self) -> list[str]:

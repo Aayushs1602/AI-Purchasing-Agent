@@ -113,6 +113,10 @@ class Budget(Base):
         return round(self.total - self.committed, 2)
 
 
+# POs whose units are still expected to arrive; they count toward inventory position.
+OPEN_PO_STATUSES = ("submitted", "confirmed", "partially_confirmed")
+
+
 class PurchaseOrder(Base):
     __tablename__ = "purchase_orders"
 

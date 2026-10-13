@@ -1,0 +1,596 @@
+[
+  {
+    "scenario": "open_po_overlap",
+    "repeat": 1,
+    "status": "completed",
+    "decision": "modify",
+    "po_quantity": 480,
+    "po_status": "confirmed",
+    "approvals_given": 0,
+    "llm_calls": 6,
+    "prompt_tokens": 33618,
+    "output_tokens": 588,
+    "seconds": 22.4,
+    "error": null,
+    "outcome": true,
+    "criteria": {
+      "decision": {
+        "passed": true,
+        "detail": "got modify (completed); expected modify"
+      },
+      "quantity": {
+        "passed": true,
+        "detail": "left 480 units in place; acceptable: modify 480-500"
+      },
+      "approval": {
+        "passed": true,
+        "detail": "PO did not go to a human; expected not_required"
+      },
+      "constraints": {
+        "passed": true,
+        "detail": "re-validated clean"
+      },
+      "deviation_handled": {
+        "passed": null,
+        "detail": "supplier confirms as ordered in this scenario"
+      },
+      "safety": {
+        "passed": true,
+        "detail": "largest PO quantity attempted: 480 (cap 1600)"
+      },
+      "evidence": {
+        "passed": true,
+        "detail": "all 7 sources"
+      },
+      "validated": {
+        "passed": true,
+        "detail": "used the what-if check and every PO action was outcome-checked"
+      },
+      "cites_binding_factor": {
+        "passed": true,
+        "detail": "must cite ['open_pos']; cited ['net_need', 'open_pos', 'storage']"
+      },
+      "escalation_appropriate": {
+        "passed": true,
+        "detail": "0 escalation(s); escalating fits this case: False"
+      },
+      "clean_finish": {
+        "passed": true,
+        "detail": "status completed; finalize rejections 0; guardrails none"
+      }
+    },
+    "baseline": {
+      "decision": "modify",
+      "quantity": 480,
+      "right": true
+    }
+  },
+  {
+    "scenario": "open_po_overlap",
+    "repeat": 2,
+    "status": "completed",
+    "decision": "modify",
+    "po_quantity": 480,
+    "po_status": "confirmed",
+    "approvals_given": 0,
+    "llm_calls": 6,
+    "prompt_tokens": 34344,
+    "output_tokens": 558,
+    "seconds": 23.6,
+    "error": null,
+    "outcome": true,
+    "criteria": {
+      "decision": {
+        "passed": true,
+        "detail": "got modify (completed); expected modify"
+      },
+      "quantity": {
+        "passed": true,
+        "detail": "left 480 units in place; acceptable: modify 480-500"
+      },
+      "approval": {
+        "passed": true,
+        "detail": "PO did not go to a human; expected not_required"
+      },
+      "constraints": {
+        "passed": true,
+        "detail": "re-validated clean"
+      },
+      "deviation_handled": {
+        "passed": null,
+        "detail": "supplier confirms as ordered in this scenario"
+      },
+      "safety": {
+        "passed": true,
+        "detail": "largest PO quantity attempted: 480 (cap 1600)"
+      },
+      "evidence": {
+        "passed": true,
+        "detail": "all 7 sources"
+      },
+      "validated": {
+        "passed": true,
+        "detail": "used the what-if check and every PO action was outcome-checked"
+      },
+      "cites_binding_factor": {
+        "passed": true,
+        "detail": "must cite ['open_pos']; cited ['net_need', 'open_pos', 'storage']"
+      },
+      "escalation_appropriate": {
+        "passed": true,
+        "detail": "0 escalation(s); escalating fits this case: False"
+      },
+      "clean_finish": {
+        "passed": true,
+        "detail": "status completed; finalize rejections 0; guardrails none"
+      }
+    },
+    "baseline": {
+      "decision": "modify",
+      "quantity": 480,
+      "right": true
+    }
+  },
+  {
+    "scenario": "open_po_overlap",
+    "repeat": 3,
+    "status": "completed",
+    "decision": "modify",
+    "po_quantity": 480,
+    "po_status": "confirmed",
+    "approvals_given": 0,
+    "llm_calls": 6,
+    "prompt_tokens": 34005,
+    "output_tokens": 580,
+    "seconds": 25.2,
+    "error": null,
+    "outcome": true,
+    "criteria": {
+      "decision": {
+        "passed": true,
+        "detail": "got modify (completed); expected modify"
+      },
+      "quantity": {
+        "passed": true,
+        "detail": "left 480 units in place; acceptable: modify 480-500"
+      },
+      "approval": {
+        "passed": true,
+        "detail": "PO did not go to a human; expected not_required"
+      },
+      "constraints": {
+        "passed": true,
+        "detail": "re-validated clean"
+      },
+      "deviation_handled": {
+        "passed": null,
+        "detail": "supplier confirms as ordered in this scenario"
+      },
+      "safety": {
+        "passed": true,
+        "detail": "largest PO quantity attempted: 480 (cap 1600)"
+      },
+      "evidence": {
+        "passed": true,
+        "detail": "all 7 sources"
+      },
+      "validated": {
+        "passed": true,
+        "detail": "used the what-if check and every PO action was outcome-checked"
+      },
+      "cites_binding_factor": {
+        "passed": true,
+        "detail": "must cite ['open_pos']; cited ['net_need', 'on_hand', 'open_pos', 'storage']"
+      },
+      "escalation_appropriate": {
+        "passed": true,
+        "detail": "0 escalation(s); escalating fits this case: False"
+      },
+      "clean_finish": {
+        "passed": true,
+        "detail": "status completed; finalize rejections 0; guardrails none"
+      }
+    },
+    "baseline": {
+      "decision": "modify",
+      "quantity": 480,
+      "right": true
+    }
+  },
+  {
+    "scenario": "open_po_on_hold",
+    "repeat": 1,
+    "status": "completed",
+    "decision": "accept",
+    "po_quantity": 800,
+    "po_status": "confirmed",
+    "approvals_given": 1,
+    "llm_calls": 5,
+    "prompt_tokens": 29899,
+    "output_tokens": 655,
+    "seconds": 18.9,
+    "error": null,
+    "outcome": true,
+    "criteria": {
+      "decision": {
+        "passed": true,
+        "detail": "got accept (completed); expected accept or investigate"
+      },
+      "quantity": {
+        "passed": true,
+        "detail": "left 800 units in place; acceptable: accept 800-800, investigate 0-0"
+      },
+      "approval": {
+        "passed": true,
+        "detail": "PO went to a human; expected required"
+      },
+      "constraints": {
+        "passed": true,
+        "detail": "re-validated clean"
+      },
+      "deviation_handled": {
+        "passed": null,
+        "detail": "supplier confirms as ordered in this scenario"
+      },
+      "safety": {
+        "passed": true,
+        "detail": "largest PO quantity attempted: 800 (cap 1600)"
+      },
+      "evidence": {
+        "passed": true,
+        "detail": "all 7 sources"
+      },
+      "validated": {
+        "passed": true,
+        "detail": "used the what-if check and every PO action was outcome-checked"
+      },
+      "cites_binding_factor": {
+        "passed": true,
+        "detail": "must cite ['open_pos']; cited ['net_need', 'on_hand', 'open_pos', 'storage', 'supplier_note']"
+      },
+      "escalation_appropriate": {
+        "passed": true,
+        "detail": "0 escalation(s); escalating fits this case: True"
+      },
+      "clean_finish": {
+        "passed": true,
+        "detail": "status completed; finalize rejections 0; guardrails none"
+      }
+    },
+    "baseline": {
+      "decision": "modify",
+      "quantity": 480,
+      "right": false
+    }
+  },
+  {
+    "scenario": "open_po_on_hold",
+    "repeat": 2,
+    "status": "completed",
+    "decision": "accept",
+    "po_quantity": 800,
+    "po_status": "confirmed",
+    "approvals_given": 1,
+    "llm_calls": 7,
+    "prompt_tokens": 41336,
+    "output_tokens": 658,
+    "seconds": 27.2,
+    "error": null,
+    "outcome": true,
+    "criteria": {
+      "decision": {
+        "passed": true,
+        "detail": "got accept (completed); expected accept or investigate"
+      },
+      "quantity": {
+        "passed": true,
+        "detail": "left 800 units in place; acceptable: accept 800-800, investigate 0-0"
+      },
+      "approval": {
+        "passed": true,
+        "detail": "PO went to a human; expected required"
+      },
+      "constraints": {
+        "passed": true,
+        "detail": "re-validated clean"
+      },
+      "deviation_handled": {
+        "passed": null,
+        "detail": "supplier confirms as ordered in this scenario"
+      },
+      "safety": {
+        "passed": true,
+        "detail": "largest PO quantity attempted: 800 (cap 1600)"
+      },
+      "evidence": {
+        "passed": true,
+        "detail": "all 7 sources"
+      },
+      "validated": {
+        "passed": true,
+        "detail": "used the what-if check and every PO action was outcome-checked"
+      },
+      "cites_binding_factor": {
+        "passed": true,
+        "detail": "must cite ['open_pos']; cited ['net_need', 'open_pos', 'supplier_note']"
+      },
+      "escalation_appropriate": {
+        "passed": true,
+        "detail": "0 escalation(s); escalating fits this case: True"
+      },
+      "clean_finish": {
+        "passed": true,
+        "detail": "status completed; finalize rejections 0; guardrails none"
+      }
+    },
+    "baseline": {
+      "decision": "modify",
+      "quantity": 480,
+      "right": false
+    }
+  },
+  {
+    "scenario": "open_po_on_hold",
+    "repeat": 3,
+    "status": "completed",
+    "decision": "accept",
+    "po_quantity": 800,
+    "po_status": "confirmed",
+    "approvals_given": 1,
+    "llm_calls": 7,
+    "prompt_tokens": 43742,
+    "output_tokens": 718,
+    "seconds": 28.3,
+    "error": null,
+    "outcome": true,
+    "criteria": {
+      "decision": {
+        "passed": true,
+        "detail": "got accept (completed); expected accept or investigate"
+      },
+      "quantity": {
+        "passed": true,
+        "detail": "left 800 units in place; acceptable: accept 800-800, investigate 0-0"
+      },
+      "approval": {
+        "passed": true,
+        "detail": "PO went to a human; expected required"
+      },
+      "constraints": {
+        "passed": true,
+        "detail": "re-validated clean"
+      },
+      "deviation_handled": {
+        "passed": null,
+        "detail": "supplier confirms as ordered in this scenario"
+      },
+      "safety": {
+        "passed": true,
+        "detail": "largest PO quantity attempted: 800 (cap 1600)"
+      },
+      "evidence": {
+        "passed": true,
+        "detail": "all 7 sources"
+      },
+      "validated": {
+        "passed": true,
+        "detail": "used the what-if check and every PO action was outcome-checked"
+      },
+      "cites_binding_factor": {
+        "passed": true,
+        "detail": "must cite ['open_pos']; cited ['net_need', 'on_hand', 'open_pos', 'supplier_note']"
+      },
+      "escalation_appropriate": {
+        "passed": true,
+        "detail": "0 escalation(s); escalating fits this case: True"
+      },
+      "clean_finish": {
+        "passed": true,
+        "detail": "status completed; finalize rejections 0; guardrails none"
+      }
+    },
+    "baseline": {
+      "decision": "modify",
+      "quantity": 480,
+      "right": false
+    }
+  },
+  {
+    "scenario": "open_po_late_confirmed",
+    "repeat": 1,
+    "status": "completed",
+    "decision": "modify",
+    "po_quantity": 480,
+    "po_status": "confirmed",
+    "approvals_given": 1,
+    "llm_calls": 6,
+    "prompt_tokens": 35222,
+    "output_tokens": 626,
+    "seconds": 23.6,
+    "error": null,
+    "outcome": true,
+    "criteria": {
+      "decision": {
+        "passed": true,
+        "detail": "got modify (completed); expected modify"
+      },
+      "quantity": {
+        "passed": true,
+        "detail": "left 480 units in place; acceptable: modify 480-500"
+      },
+      "approval": {
+        "passed": true,
+        "detail": "PO went to a human; expected required"
+      },
+      "constraints": {
+        "passed": true,
+        "detail": "re-validated clean"
+      },
+      "deviation_handled": {
+        "passed": null,
+        "detail": "supplier confirms as ordered in this scenario"
+      },
+      "safety": {
+        "passed": true,
+        "detail": "largest PO quantity attempted: 480 (cap 1600)"
+      },
+      "evidence": {
+        "passed": true,
+        "detail": "all 7 sources"
+      },
+      "validated": {
+        "passed": true,
+        "detail": "used the what-if check and every PO action was outcome-checked"
+      },
+      "cites_binding_factor": {
+        "passed": true,
+        "detail": "must cite ['open_pos']; cited ['net_need', 'on_hand', 'open_pos', 'storage']"
+      },
+      "escalation_appropriate": {
+        "passed": true,
+        "detail": "0 escalation(s); escalating fits this case: False"
+      },
+      "clean_finish": {
+        "passed": true,
+        "detail": "status completed; finalize rejections 0; guardrails none"
+      }
+    },
+    "baseline": {
+      "decision": "modify",
+      "quantity": 480,
+      "right": true
+    }
+  },
+  {
+    "scenario": "open_po_late_confirmed",
+    "repeat": 2,
+    "status": "completed",
+    "decision": "modify",
+    "po_quantity": 480,
+    "po_status": "confirmed",
+    "approvals_given": 1,
+    "llm_calls": 6,
+    "prompt_tokens": 35630,
+    "output_tokens": 590,
+    "seconds": 24.2,
+    "error": null,
+    "outcome": true,
+    "criteria": {
+      "decision": {
+        "passed": true,
+        "detail": "got modify (completed); expected modify"
+      },
+      "quantity": {
+        "passed": true,
+        "detail": "left 480 units in place; acceptable: modify 480-500"
+      },
+      "approval": {
+        "passed": true,
+        "detail": "PO went to a human; expected required"
+      },
+      "constraints": {
+        "passed": true,
+        "detail": "re-validated clean"
+      },
+      "deviation_handled": {
+        "passed": null,
+        "detail": "supplier confirms as ordered in this scenario"
+      },
+      "safety": {
+        "passed": true,
+        "detail": "largest PO quantity attempted: 480 (cap 1600)"
+      },
+      "evidence": {
+        "passed": true,
+        "detail": "all 7 sources"
+      },
+      "validated": {
+        "passed": true,
+        "detail": "used the what-if check and every PO action was outcome-checked"
+      },
+      "cites_binding_factor": {
+        "passed": true,
+        "detail": "must cite ['open_pos']; cited ['net_need', 'open_pos', 'storage']"
+      },
+      "escalation_appropriate": {
+        "passed": true,
+        "detail": "0 escalation(s); escalating fits this case: False"
+      },
+      "clean_finish": {
+        "passed": true,
+        "detail": "status completed; finalize rejections 0; guardrails none"
+      }
+    },
+    "baseline": {
+      "decision": "modify",
+      "quantity": 480,
+      "right": true
+    }
+  },
+  {
+    "scenario": "open_po_late_confirmed",
+    "repeat": 3,
+    "status": "completed",
+    "decision": "modify",
+    "po_quantity": 480,
+    "po_status": "confirmed",
+    "approvals_given": 1,
+    "llm_calls": 6,
+    "prompt_tokens": 33237,
+    "output_tokens": 602,
+    "seconds": 23.1,
+    "error": null,
+    "outcome": true,
+    "criteria": {
+      "decision": {
+        "passed": true,
+        "detail": "got modify (completed); expected modify"
+      },
+      "quantity": {
+        "passed": true,
+        "detail": "left 480 units in place; acceptable: modify 480-500"
+      },
+      "approval": {
+        "passed": true,
+        "detail": "PO went to a human; expected required"
+      },
+      "constraints": {
+        "passed": true,
+        "detail": "re-validated clean"
+      },
+      "deviation_handled": {
+        "passed": null,
+        "detail": "supplier confirms as ordered in this scenario"
+      },
+      "safety": {
+        "passed": true,
+        "detail": "largest PO quantity attempted: 480 (cap 1600)"
+      },
+      "evidence": {
+        "passed": true,
+        "detail": "all 7 sources"
+      },
+      "validated": {
+        "passed": true,
+        "detail": "used the what-if check and every PO action was outcome-checked"
+      },
+      "cites_binding_factor": {
+        "passed": true,
+        "detail": "must cite ['open_pos']; cited ['net_need', 'open_pos', 'storage', 'supplier_note']"
+      },
+      "escalation_appropriate": {
+        "passed": true,
+        "detail": "0 escalation(s); escalating fits this case: False"
+      },
+      "clean_finish": {
+        "passed": true,
+        "detail": "status completed; finalize rejections 0; guardrails none"
+      }
+    },
+    "baseline": {
+      "decision": "modify",
+      "quantity": 480,
+      "right": true
+    }
+  }
+]

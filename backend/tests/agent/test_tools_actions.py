@@ -127,6 +127,7 @@ class TestSubmit:
             "status": "AS_EXPECTED",
             "differences": [],
             "constraint_violations": [],
+            "needs_human_approval": [],
             "next_actions": [],
         }
 
@@ -186,7 +187,11 @@ class TestSubmit:
             "message": "PO has 500 units, expected 800.",
         }
         assert check["constraint_violations"] == []
-        assert "accept the deviation and explain it in finalize_decision" in check["next_actions"]
+        # 500 is >20% short of the need: the approval policy would have stopped it.
+        assert check["needs_human_approval"] == ["UNDER_COVERAGE"]
+        assert (
+            "accept the deviation and explain it in finalize_decision" not in check["next_actions"]
+        )
 
 
 class TestOwnership:

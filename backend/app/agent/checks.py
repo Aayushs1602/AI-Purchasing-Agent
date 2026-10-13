@@ -43,6 +43,8 @@ class OutcomeCheck(BaseModel):
     status: Literal["AS_EXPECTED", "UNEXPECTED_OUTCOME"]
     differences: list[Difference]
     constraint_violations: list[str]
+    # Approval reasons the PO now carries that no human has signed off.
+    needs_human_approval: list[str] = Field(default_factory=list)
     next_actions: list[str]
 
 
@@ -131,16 +133,29 @@ def check_outcome(
             )
 
     violations = [f.code for f in evaluation.hard_violations] if evaluation else []
+    unapproved = unapproved_reasons(po, evaluation) if sent else []
     unexpected = bool(diffs or violations)
     return OutcomeCheck(
         status="UNEXPECTED_OUTCOME" if unexpected else "AS_EXPECTED",
         differences=diffs,
         constraint_violations=violations,
-        next_actions=_next_actions(sent=sent, violations=violations) if unexpected else [],
+        needs_human_approval=unapproved,
+        next_actions=(
+            _next_actions(sent=sent, violations=violations, unapproved=unapproved)
+            if unexpected
+            else []
+        ),
     )
 
 
-def _next_actions(*, sent: bool, violations: list[str]) -> list[str]:
+def unapproved_reasons(po: PurchaseOrder, evaluation: QuantityEvaluation | None) -> list[str]:
+    """Approval reasons a sent PO carries that no human approved (e.g. after a partial fill)."""
+    if evaluation is None or po.approval_status == "approved":
+        return []
+    return [f.code for f in evaluation.approval_reasons] if evaluation.requires_approval else []
+
+
+def _next_actions(*, sent: bool, violations: list[str], unapproved: list[str]) -> list[str]:
     if not sent:
         return [
             "amend_purchase_order to the quantity you intended",
@@ -151,7 +166,12 @@ def _next_actions(*, sent: bool, violations: list[str]) -> list[str]:
         "cancel_purchase_order",
         "escalate_to_human",
     ]
-    if not violations:
+    if unapproved:
+        # The approval policy would have stopped this PO; the agent cannot wave it through.
+        actions.append(
+            "accepting this deviation needs a human (" + ", ".join(unapproved) + "): escalate it"
+        )
+    elif not violations:
         actions.append("accept the deviation and explain it in finalize_decision")
     return actions
 
@@ -209,12 +229,19 @@ def decision_problems(ctx: RunContext, decision: str, final_quantity: int) -> li
             "The circuit breaker escalated this case: the decision must be investigate."
         )
 
-    if placed is not None and escalated is None:
-        violations = [f.code for f in ctx.po_service.revalidate(placed).hard_violations]
+    if placed is not None and escalated is None and placed.status != "pending_approval":
+        evaluation = ctx.po_service.revalidate(placed)
+        violations = [f.code for f in evaluation.hard_violations]
+        unapproved = unapproved_reasons(placed, evaluation)
         if violations:
             problems.append(
                 f"{placed.id} breaks hard constraints ({', '.join(violations)}): amend, cancel or "
                 "escalate it before finalizing."
+            )
+        elif unapproved:
+            problems.append(
+                f"{placed.id}, as the supplier confirmed it, needs a human's approval "
+                f"({', '.join(unapproved)}) that it never got: escalate it before finalizing."
             )
     return problems
 

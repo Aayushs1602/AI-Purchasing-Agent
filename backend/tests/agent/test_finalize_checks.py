@@ -182,3 +182,38 @@ def test_second_rejection_is_recorded_and_flagged_for_review(engine, seeded):
         assert (run.status, run.decision) == ("needs_review", "accept")
         assert any("accept needs a placed PO" in issue for issue in run.validation_issues)
         assert session.scalar(select(AgentRun.id).where(AgentRun.status == "needs_review"))
+
+
+class TestDeviationsNeedingApproval:
+    def test_partial_fill_cannot_be_accepted_without_a_human(self, ctx):
+        context = ctx("REC-1011")
+        po_id = create(context, 800)["data"]["purchase_order"]["po_id"]
+
+        check = submit(context, po_id, 800, 2000)["data"]["outcome_check"]
+
+        assert check["needs_human_approval"] == ["UNDER_COVERAGE"]
+        assert not any("accept the deviation and explain" in a for a in check["next_actions"])
+        assert "needs a human's approval (UNDER_COVERAGE)" in problems(
+            finalize(context, "modify", 500)
+        )
+
+    def test_escalating_the_shortfall_satisfies_the_check(self, ctx):
+        context = ctx("REC-1011")
+        placed_po(context)
+        call(
+            context,
+            "escalate_to_human",
+            reason="Supplier confirmed 500 of 800; 300 units still needed.",
+            questions=["Source the remaining 300 elsewhere?"],
+        )
+
+        assert finalize(context, "investigate", 500)["ok"]
+
+    def test_human_approved_pos_are_not_flagged_again(self, ctx):
+        context = ctx("REC-1004")  # budget cap: 600 needs approval for under-coverage
+        po_id = create(context, 600, cost=1500)["data"]["purchase_order"]["po_id"]
+        submit(context, po_id, 600, 1500)
+        context.po_service.approve(po_id, approver="buyer:ana")
+        factors = [{"factor": "budget", "value": 1500, "impact": "caps the order"}]
+
+        assert finalize(context, "modify", 600, factors)["ok"]

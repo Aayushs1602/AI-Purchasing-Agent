@@ -2,13 +2,31 @@
 
 from __future__ import annotations
 
-from datetime import date
+from datetime import date, datetime
 from typing import Any
 
 from pydantic import BaseModel, ConfigDict
 
 from app.engine.models import PurchasingContext
 from app.engine.policy import Finding, QuantityEvaluation
+
+
+class RunSummary(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: str
+    recommendation_id: str
+    status: str
+    provider: str
+    model: str
+    decision: str | None
+    final_quantity: int | None
+    confidence: float | None
+    llm_calls: int
+    prompt_tokens: int
+    output_tokens: int
+    started_at: datetime
+    finished_at: datetime | None
 
 
 class RecommendationSummary(BaseModel):
@@ -24,6 +42,7 @@ class RecommendationSummary(BaseModel):
     quantity: int
     created_on: date
     status: str
+    latest_run: RunSummary | None = None
 
 
 class RecommendationDetail(RecommendationSummary):
@@ -85,3 +104,52 @@ class PurchaseOrderEventOut(BaseModel):
 
 class PurchaseOrderDetail(PurchaseOrderOut):
     events: list[PurchaseOrderEventOut]
+
+
+class StepOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    seq: int
+    kind: str
+    name: str | None
+    payload: dict[str, Any]
+    duration_ms: int | None
+    created_at: datetime
+
+
+class EscalationOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: str
+    run_id: str
+    recommendation_id: str
+    severity: str
+    reason: str
+    questions: list[str]
+    options: list[str]
+    status: str
+    created_on: date
+
+
+class PausedFor(BaseModel):
+    po_id: str
+    reasons: list[dict[str, Any]]
+
+
+class RunDetail(RunSummary):
+    rationale: str | None
+    key_factors: list[dict[str, Any]] | None
+    risks: list[str] | None
+    evidence: list[str]
+    error: str | None
+    validation_issues: list[str] | None
+    fallback_proposal: dict[str, Any] | None
+    paused_for: PausedFor | None
+    purchase_orders: list[PurchaseOrderOut]
+    escalations: list[EscalationOut]
+    steps: list[StepOut]
+
+
+class RunStarted(BaseModel):
+    run_id: str
+    status: str

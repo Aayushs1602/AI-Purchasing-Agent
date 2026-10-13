@@ -45,6 +45,8 @@ class Settings(BaseSettings):
     llm_max_retries: int = 4
     # Hard cap on model calls per agent run (a normal run needs 5-8).
     agent_max_llm_calls: int = 16
+    # Agent runs executing at once in the API (the free tier's rate limit is shared anyway).
+    agent_workers: int = 2
 
     @property
     def cors_origin_list(self) -> list[str]:

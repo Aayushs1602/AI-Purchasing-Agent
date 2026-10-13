@@ -9,8 +9,13 @@ from sqlalchemy.orm import Session
 from app.api.deps import get_app_settings, get_session
 from app.config import Settings
 from app.engine.policy import evaluate_quantity, recommendation_findings
-from app.models import Product, Recommendation, Supplier, SupplierTerm
-from app.schemas import RecommendationContext, RecommendationDetail, RecommendationSummary
+from app.models import AgentRun, Product, Recommendation, Supplier, SupplierTerm
+from app.schemas import (
+    RecommendationContext,
+    RecommendationDetail,
+    RecommendationSummary,
+    RunSummary,
+)
 from app.services.context import (
     ContextNotFoundError,
     context_for_recommendation,
@@ -26,6 +31,12 @@ SettingsDep = Annotated[Settings, Depends(get_app_settings)]
 def _summary_fields(session: Session, rec: Recommendation) -> dict:
     product = session.get(Product, rec.sku)
     supplier = session.get(Supplier, rec.supplier_id)
+    latest = session.scalar(
+        select(AgentRun)
+        .where(AgentRun.recommendation_id == rec.id)
+        .order_by(AgentRun.started_at.desc())
+        .limit(1)
+    )
     return {
         "id": rec.id,
         "scenario": rec.scenario,
@@ -39,6 +50,7 @@ def _summary_fields(session: Session, rec: Recommendation) -> dict:
         "quantity": rec.quantity,
         "created_on": rec.created_on,
         "status": rec.status,
+        "latest_run": RunSummary.model_validate(latest) if latest else None,
     }
 
 

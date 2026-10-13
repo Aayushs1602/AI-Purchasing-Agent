@@ -12,18 +12,22 @@ behind (consistency), and every number it cites must be one a tool returned (gro
 from __future__ import annotations
 
 from datetime import date
-from typing import Any, Literal
+from typing import TYPE_CHECKING, Any, Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy import select
 
-from app.agent.tools.base import RunContext, ToolArgs
 from app.engine.policy import QuantityEvaluation
 from app.models import Escalation, PurchaseOrder
 
+if TYPE_CHECKING:  # the tools package imports this module; avoid a cycle at runtime
+    from app.agent.tools.base import RunContext
 
-class ActionExpectation(ToolArgs):
+
+class ActionExpectation(BaseModel):
     """What the agent expects the PO to look like after the action."""
+
+    model_config = ConfigDict(extra="forbid")
 
     quantity: int = Field(ge=0, description="Units you expect on the PO afterwards")
     max_total_cost: float = Field(ge=0, description="The most you expect the PO to cost")

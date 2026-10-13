@@ -113,6 +113,9 @@ export function Inbox({ agentReady, onDataChanged }: Props) {
               const run = rec.latest_run
               const active = ACTIVE_RUN_STATUSES.includes(run?.status ?? '') ||
                 run?.status === 'awaiting_approval'
+              // An earlier run already placed an order: a new review would only count it as
+              // stock on the way, so the button stays off until the demo data is reset.
+              const ordered = rec.live_po && !active ? rec.live_po : null
               return (
                 <tr key={rec.id}>
                   <td>
@@ -147,11 +150,23 @@ export function Inbox({ agentReady, onDataChanged }: Props) {
                   <td style={{ textAlign: 'right' }}>
                     <button
                       className="primary"
-                      disabled={!agentReady || active || starting !== null}
+                      disabled={!agentReady || active || ordered !== null || starting !== null}
                       onClick={() => start(rec)}
                     >
-                      {starting === rec.id ? 'Starting...' : run ? 'Run again' : 'Run agent'}
+                      {starting === rec.id
+                        ? 'Starting...'
+                        : ordered
+                          ? 'Ordered'
+                          : run
+                            ? 'Run again'
+                            : 'Run agent'}
                     </button>
+                    {ordered && (
+                      <span className="sub">
+                        <span className="mono">{ordered.id}</span> · {ordered.quantity} units,{' '}
+                        {ordered.status}. Reset demo data to review again.
+                      </span>
+                    )}
                   </td>
                 </tr>
               )

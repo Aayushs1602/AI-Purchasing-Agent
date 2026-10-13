@@ -9,8 +9,17 @@ from sqlalchemy.orm import Session
 from app.api.deps import get_app_settings, get_session
 from app.config import Settings
 from app.engine.policy import evaluate_quantity, recommendation_findings
-from app.models import AgentRun, Product, Recommendation, Supplier, SupplierTerm
+from app.models import (
+    LIVE_PO_STATUSES,
+    AgentRun,
+    Product,
+    PurchaseOrder,
+    Recommendation,
+    Supplier,
+    SupplierTerm,
+)
 from app.schemas import (
+    PurchaseOrderOut,
     RecommendationContext,
     RecommendationDetail,
     RecommendationSummary,
@@ -37,6 +46,12 @@ def _summary_fields(session: Session, rec: Recommendation) -> dict:
         .order_by(AgentRun.started_at.desc())
         .limit(1)
     )
+    live_po = session.scalar(
+        select(PurchaseOrder).where(
+            PurchaseOrder.recommendation_id == rec.id,
+            PurchaseOrder.status.in_(LIVE_PO_STATUSES),
+        )
+    )
     return {
         "id": rec.id,
         "scenario": rec.scenario,
@@ -51,6 +66,7 @@ def _summary_fields(session: Session, rec: Recommendation) -> dict:
         "created_on": rec.created_on,
         "status": rec.status,
         "latest_run": RunSummary.model_validate(latest) if latest else None,
+        "live_po": PurchaseOrderOut.model_validate(live_po) if live_po else None,
     }
 
 

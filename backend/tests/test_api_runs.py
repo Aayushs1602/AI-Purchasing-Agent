@@ -69,7 +69,9 @@ def test_recommendations_show_their_latest_run(make_client):
 
     assert recs["REC-1001"]["status"] == "decided"
     assert recs["REC-1001"]["latest_run"]["id"] == run_id
+    assert recs["REC-1001"]["live_po"]["status"] == "confirmed"
     assert recs["REC-1002"]["latest_run"] is None
+    assert recs["REC-1002"]["live_po"] is None
 
 
 def test_runs_can_be_listed_by_recommendation(make_client):
@@ -99,6 +101,17 @@ def test_second_run_while_one_is_active_is_a_conflict(make_client):
         response = client.post("/api/recommendations/REC-1012/runs")
 
     assert response.status_code == 409
+
+
+def test_a_recommendation_with_a_placed_order_cannot_be_run_again(make_client):
+    with make_client(ACCEPT) as client:
+        start(client, "REC-1001")
+        po_id = client.get("/api/recommendations").json()[0]["live_po"]["id"]
+
+        response = client.post("/api/recommendations/REC-1001/runs")
+
+    assert response.status_code == 409
+    assert f"already has {po_id}" in response.json()["detail"]
 
 
 def test_unknown_recommendation_or_run(make_client):

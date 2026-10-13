@@ -259,3 +259,11 @@ class TestGuardrails:
 
         with pytest.raises(RunConflictError):
             runner.create_run("REC-1001")
+
+    def test_no_new_run_while_an_earlier_order_is_live(self, engine, run_agent):
+        run_agent("REC-1001", [READS, create_po(800), submit(800, 2000), finalize("accept", 800)])
+        runner = AgentRunner(make_session_factory(engine), ScriptedClient([]), today=TODAY)
+
+        # A second review would count the first run's PO as stock on order and find no need.
+        with pytest.raises(RunConflictError, match=r"already has PO-\d+ \(800 units, confirmed\)"):
+            runner.create_run("REC-1001")

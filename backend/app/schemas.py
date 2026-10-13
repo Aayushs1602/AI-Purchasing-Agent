@@ -43,6 +43,8 @@ class RecommendationSummary(BaseModel):
     created_on: date
     status: str
     latest_run: RunSummary | None = None
+    # A PO still in play for this recommendation; while it exists, no new run can start.
+    live_po: PurchaseOrderOut | None = None
 
 
 class RecommendationDetail(RecommendationSummary):
@@ -156,3 +158,8 @@ class RunDetail(RunSummary):
 class RunStarted(BaseModel):
     run_id: str
     status: str
+
+
+# RecommendationSummary refers to PurchaseOrderOut, defined further down.
+RecommendationSummary.model_rebuild()
+RecommendationDetail.model_rebuild()

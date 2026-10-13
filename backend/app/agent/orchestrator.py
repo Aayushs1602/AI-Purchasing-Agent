@@ -40,6 +40,7 @@ from app.agent.tools.base import error
 from app.engine.policy import DEFAULT_POLICY, PolicyConfig
 from app.engine.reference_policy import decide
 from app.models import (
+    LIVE_PO_STATUSES,
     AgentRun,
     AgentStep,
     Escalation,
@@ -188,6 +189,20 @@ class AgentRunner:
             )
             if active is not None:
                 raise RunConflictError(f"{active.id} is already {active.status} for {rec.id}")
+            # An earlier review already placed an order. A new run would only see that order as
+            # stock on the way and conclude nothing is needed, which reads as a rejection.
+            placed = session.scalar(
+                select(PurchaseOrder).where(
+                    PurchaseOrder.recommendation_id == rec.id,
+                    PurchaseOrder.status.in_(LIVE_PO_STATUSES),
+                )
+            )
+            if placed is not None:
+                raise RunConflictError(
+                    f"{rec.id} already has {placed.id} ({placed.quantity} units, {placed.status}) "
+                    f"from {placed.run_id or placed.created_by}. Cancel that order (in the demo: "
+                    "reset the demo data) before reviewing the recommendation again."
+                )
             run = AgentRun(
                 id=f"RUN-{uuid.uuid4().hex[:8].upper()}",
                 recommendation_id=rec.id,

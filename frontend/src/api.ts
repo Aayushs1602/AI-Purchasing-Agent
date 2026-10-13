@@ -32,6 +32,8 @@ export interface Recommendation {
   created_on: string
   status: string
   latest_run: RunSummary | null
+  // A PO still in play for this recommendation; the API refuses new runs while it exists.
+  live_po: PurchaseOrder | null
 }
 
 export interface RecommendationDetail extends Recommendation {

@@ -84,6 +84,7 @@ change is risky (say, under-coverage), not only that the quantity changed.
 | Approval gate | `PurchaseOrderService.submit` | Sending a flagged PO without a human |
 | Idempotency | key = run + tool-call id | A replayed call creating a second PO |
 | One live PO per recommendation | `PurchaseOrderService.create_draft` | Duplicate orders |
+| No new run while an order is live | `AgentRunner.create_run` | Re-reviewing a recommendation whose own earlier order then reads as stock on the way (and the new run as a rejection) |
 | Expectation vs outcome | `agent/checks.py` | Carrying on after the world did something else |
 | Circuit breaker | `record_supplier_outcome()` | Looping on a supplier that will not budge |
 | Finalize consistency and grounding | `agent/checks.py` | A decision that contradicts the database or cites invented numbers |

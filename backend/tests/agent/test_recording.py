@@ -136,3 +136,29 @@ def test_factory_builds_the_replay_client(tmp_path):
 
     assert isinstance(client, ReplayClient)
     assert client.directory == tmp_path
+
+
+def test_replay_works_when_po_numbers_differ(fresh_factory, tmp_path):
+    record(fresh_factory(), "REC-1001", ACCEPT_SCRIPT, tmp_path / "accept_baseline.json")
+    script_12 = [
+        READS,
+        create_po(800, 3600),
+        submit(800, 3600),
+        finalize("accept", 800, factor="order_value", value=3600),
+    ]
+    record(fresh_factory(), "REC-1012", script_12, tmp_path / "high_value_approval.json", True)
+
+    # Replay both in one database: the second run's PO is PO-5002, not the recorded PO-5001.
+    shared = fresh_factory()
+    runner = AgentRunner(shared, ReplayClient(tmp_path), today=TODAY)
+    first = runner.run("REC-1001")
+    second = runner.run("REC-1012")  # pauses for approval; resume must keep the mapping
+    runner.resume(second, approve=True, approver="buyer:test")
+
+    assert outcome(shared, first) == ("completed", "accept", 800, "confirmed")
+    assert outcome(shared, second) == ("completed", "accept", 800, "confirmed")
+    with shared() as session:
+        assert (
+            session.scalar(select(PurchaseOrder.id).where(PurchaseOrder.run_id == second))
+            == "PO-5002"
+        )

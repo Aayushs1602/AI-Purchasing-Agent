@@ -5,11 +5,16 @@ tools answered each turn (tool name, ok or error code) - never the results thems
 replay the tools, the PO service and every validator run for real against fresh data, and the
 signatures are compared: if the code or data has drifted since recording, replay fails loudly
 instead of quietly telling a different story.
+
+PO ids are global, so a replayed run may create PO-5002 where the recording created PO-5001.
+Recorded calls that name a PO id this run has never seen are pointed at the PO this run
+created; ids the run did see (e.g. existing open POs) are left alone.
 """
 
 from __future__ import annotations
 
 import json
+import re
 from collections import Counter
 from collections.abc import Iterable
 from pathlib import Path
@@ -27,6 +32,7 @@ from app.agent.llm.base import (
 )
 
 RECORDING_FORMAT = 1
+_PO_ID = re.compile(r"^PO-\d+$")
 
 
 def _signature(results: Iterable[ToolResult]) -> list[dict[str, Any]]:
@@ -138,6 +144,12 @@ class ReplaySession:
     def __init__(self, turns: list[dict[str, Any]], history: list[dict[str, Any]]):
         self._turns = turns
         self._history = history  # [{"role": "user" | "model", ...}]; resumable
+        # PO ids this run has seen in tool results, and the latest PO it created.
+        self._seen_ids: set[str] = set()
+        self._own_po: str | None = None
+        for entry in history:
+            self._seen_ids.update(entry.get("po_ids", []))
+            self._own_po = entry.get("own_po") or self._own_po
 
     def send_message(self, text: str) -> LLMResponse:
         self._history.append({"role": "user", "text": text})
@@ -156,8 +168,45 @@ class ReplaySession:
                 f"({', '.join(changed)}). The code or data has changed since it was recorded; "
                 "re-record it."
             )
-        self._history.append({"role": "user", "results": [r.name for r in results]})
+        for result in results:
+            self._learn_ids(result.payload)
+        self._history.append(
+            {
+                "role": "user",
+                "results": [r.name for r in results],
+                "po_ids": sorted(self._seen_ids),
+                "own_po": self._own_po,
+            }
+        )
         return self._next()
+
+    def _learn_ids(self, value: Any) -> None:
+        if isinstance(value, dict):
+            po = value.get("purchase_order")
+            if isinstance(po, dict) and po.get("po_id"):
+                self._own_po = po["po_id"]
+            for item in value.values():
+                self._learn_ids(item)
+        elif isinstance(value, list):
+            for item in value:
+                self._learn_ids(item)
+        elif isinstance(value, str) and _PO_ID.match(value):
+            self._seen_ids.add(value)
+
+    def _remap(self, value: Any) -> Any:
+        """Point recorded PO ids this run never saw at the PO this run created."""
+        if isinstance(value, dict):
+            return {key: self._remap(item) for key, item in value.items()}
+        if isinstance(value, list):
+            return [self._remap(item) for item in value]
+        if (
+            isinstance(value, str)
+            and _PO_ID.match(value)
+            and value not in self._seen_ids
+            and self._own_po
+        ):
+            return self._own_po
+        return value
 
     def export_history(self) -> list[dict[str, Any]]:
         return list(self._history)
@@ -176,7 +225,9 @@ class ReplaySession:
         self._history.append({"role": "model", "turn": index})
         return LLMResponse(
             text=turn["text"],
-            tool_calls=[ToolCall(c["id"], c["name"], c["args"]) for c in turn["tool_calls"]],
+            tool_calls=[
+                ToolCall(c["id"], c["name"], self._remap(c["args"])) for c in turn["tool_calls"]
+            ],
             usage=Usage(**turn.get("usage", {})),
             finish_reason=turn.get("finish_reason"),
         )

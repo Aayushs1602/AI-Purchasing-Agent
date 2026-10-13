@@ -30,7 +30,7 @@ class Base(DeclarativeBase):
 
 # Bump whenever a table or column changes. On startup a database stamped with another
 # version is rebuilt from the scenarios (demo data only; production would use migrations).
-SCHEMA_VERSION = 5
+SCHEMA_VERSION = 6
 
 
 class SchemaInfo(Base):
@@ -252,6 +252,8 @@ class AgentRun(Base):
     error: Mapped[str | None] = mapped_column(Text, default=None)
     # Problems the final-decision checks still found after the agent's retry (needs_review).
     validation_issues: Mapped[list[str] | None] = mapped_column(JSON, default=None)
+    # Degraded mode: the rules-only proposal recorded for a human when the LLM was unavailable.
+    fallback_proposal: Mapped[dict[str, Any] | None] = mapped_column(JSON, default=None)
     # Provider-native conversation, kept so a paused run can resume where it stopped.
     history: Mapped[list[dict[str, Any]] | None] = mapped_column(JSON, default=None)
     # While awaiting approval: the submit call being held and the other results of its turn.

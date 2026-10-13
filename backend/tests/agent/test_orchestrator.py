@@ -222,13 +222,34 @@ class TestGuardrails:
         assert run.llm_calls == 3
         assert "3 model calls" in run.error
 
-    def test_llm_failure_ends_the_run_cleanly(self, run_agent):
-        session, run, _ = run_agent("REC-1001", [READS])  # script runs out on the second call
+    def test_llm_failure_hands_a_rules_proposal_to_a_human(self, run_agent):
+        session, run, _ = run_agent("REC-1002", [READS])  # script runs out on the second call
 
-        assert run.status == "failed"
+        assert run.status == "needs_review"
         assert run.error.startswith("LLM unavailable")
+        assert run.decision is None  # the agent did not decide; rules only propose
+        assert (run.fallback_proposal["decision"], run.fallback_proposal["quantity"]) == (
+            "modify",
+            480,
+        )
+        escalation = session.get(Escalation, run.fallback_proposal["escalation_id"])
+        assert escalation.reason.startswith("[degraded mode]")
+        assert run_po(session, run.id) is None  # nothing was ordered on the proposal
         assert run.history  # conversation so far is kept for debugging
         assert run.finished_at is not None
+        assert session.get(Recommendation, "REC-1002").status == "needs_review"
+
+    def test_llm_failure_after_ordering_mentions_the_po(self, run_agent):
+        session, run, _ = run_agent("REC-1001", [READS, create_po(800)])
+
+        escalation = session.get(Escalation, run.fallback_proposal["escalation_id"])
+        assert "PO-5001 from this run is draft" in escalation.reason
+
+    def test_fallback_can_be_switched_off(self, run_agent):
+        _, run, _ = run_agent("REC-1001", [READS], fallback_to_rules=False)
+
+        assert run.status == "failed"
+        assert run.fallback_proposal is None
 
     def test_only_one_active_run_per_recommendation(self, engine, seeded):
         runner = AgentRunner(make_session_factory(engine), ScriptedClient([]), today=TODAY)

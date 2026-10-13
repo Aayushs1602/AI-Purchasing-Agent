@@ -145,6 +145,14 @@ def print_run(session: Session, run: AgentRun) -> None:
             print(f"  #{step.seq:<3} {step.kind:<6} {step.name}  {json.dumps(payload)[:160]}")
 
     print(f"\nStatus: {run.status}" + (f" | error: {run.error}" if run.error else ""))
+    for issue in run.validation_issues or []:
+        print(f"  review: {issue}")
+    if run.fallback_proposal:
+        proposal = run.fallback_proposal
+        print(
+            f"Rules-only proposal for a human: {proposal['decision'].upper()} "
+            f"{proposal['quantity']} units ({proposal['escalation_id']})"
+        )
     if run.decision:
         print(
             f"Decision: {run.decision.upper()} {run.final_quantity} units "

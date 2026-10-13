@@ -13,6 +13,10 @@ Approval pause: when a submit needs a human, its result is held back from the mo
 stores the model's turn, the other results of that turn and its loop state, and waits in
 `awaiting_approval`. `resume()` applies the human's decision, sends it to the model as the
 result of that same tool call, and the loop continues.
+
+Degraded mode: if the LLM fails, the run does not just die. Code computes the rules-only
+reference decision and hands it to a human as a proposal (escalation, status needs_review).
+It never acts on that proposal itself.
 """
 
 from __future__ import annotations
@@ -31,9 +35,10 @@ from sqlalchemy.orm import Session, sessionmaker
 from app.agent.llm.base import LLMClient, LLMError, LLMResponse, LLMSession, ToolCall, ToolResult
 from app.agent.prompts import NUDGE, SYSTEM_PROMPT, kickoff_message
 from app.agent.tools import RunContext, execute_tool, tool_specs
-from app.agent.tools.actions import approval_result
+from app.agent.tools.actions import approval_result, open_escalation
 from app.agent.tools.base import error
 from app.engine.policy import DEFAULT_POLICY, PolicyConfig
+from app.engine.reference_policy import decide
 from app.models import (
     AgentRun,
     AgentStep,
@@ -74,6 +79,8 @@ class AgentConfig:
     max_nudges: int = 1
     # Failed attempts to fix a supplier deviation before code escalates (circuit breaker).
     max_repair_attempts: int = 2
+    # When the LLM fails, hand a rules-only proposal to a human instead of just failing.
+    fallback_to_rules: bool = True
 
 
 def _now() -> datetime:
@@ -282,6 +289,8 @@ class AgentRunner:
             session.rollback()
             trace.note("system", "llm_error", {"error": str(exc)})
             self._fail(run, f"LLM unavailable: {exc}")
+            if self._config.fallback_to_rules:
+                self._fall_back_to_rules(ctx, trace)
         except Exception as exc:
             log.exception("Run %s crashed", run.id)
             session.rollback()
@@ -402,6 +411,42 @@ class AgentRunner:
         else:
             run.status = "completed"
         trace.note("system", "settled", {"status": run.status, "decision": run.decision})
+
+    def _fall_back_to_rules(self, ctx: RunContext, trace: Trace) -> None:
+        """Degraded mode: propose the rules-only decision to a human; take no action."""
+        try:
+            ref = decide(ctx.purchasing_context(), ctx.recommendation.quantity, self._policy)
+            placed = ctx.session.scalar(
+                select(PurchaseOrder).where(PurchaseOrder.run_id == ctx.run.id)
+            )
+            proposal = {
+                "source": "rules-only reference policy",
+                "decision": ref.decision,
+                "quantity": ref.quantity,
+                "requires_approval": ref.requires_approval,
+                "reasons": ref.reasons,
+            }
+            where = f" {placed.id} from this run is {placed.status}." if placed else ""
+            escalation = open_escalation(
+                ctx,
+                severity="high",
+                reason=(
+                    f"[degraded mode] The agent could not finish: {ctx.run.error}. Rules-only "
+                    f"proposal: {ref.decision} {ref.quantity} units. {' '.join(ref.reasons)}{where}"
+                ),
+                questions=["Confirm, change or reject the rules-only proposal."],
+                options=[
+                    f"Apply the proposal ({ref.decision} {ref.quantity} units)",
+                    "Re-run the agent when the LLM is available",
+                    "Decide manually",
+                ],
+            )
+        except Exception:
+            log.exception("Run %s: rules fallback failed", ctx.run.id)
+            return
+        ctx.run.status = "needs_review"
+        ctx.run.fallback_proposal = {**proposal, "escalation_id": escalation.id}
+        trace.note("system", "degraded_mode", ctx.run.fallback_proposal)
 
     @staticmethod
     def _fail(run: AgentRun, reason: str) -> None:

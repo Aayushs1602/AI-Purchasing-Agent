@@ -13,7 +13,7 @@ from __future__ import annotations
 from typing import Any, Literal
 
 from pydantic import Field
-from sqlalchemy import func, select
+from sqlalchemy import Integer, cast, func, select
 
 from app.agent.checks import (
     ActionExpectation,
@@ -319,9 +319,13 @@ class EscalateArgs(ToolArgs):
 def open_escalation(
     ctx: RunContext, *, severity: str, reason: str, questions: list[str], options: list[str]
 ) -> Escalation:
-    count = ctx.session.scalar(select(func.count()).select_from(Escalation)) or 0
+    max_num = ctx.session.scalar(
+        select(func.max(cast(func.substr(Escalation.id, 5), Integer))).where(
+            Escalation.id.like("ESC-%")
+        )
+    )
     escalation = Escalation(
-        id=f"ESC-{count + 1:04d}",
+        id=f"ESC-{(max_num or 0) + 1:04d}",
         run_id=ctx.run.id,
         recommendation_id=ctx.recommendation.id,
         severity=severity,

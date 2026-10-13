@@ -21,7 +21,7 @@ from dataclasses import dataclass, field
 from datetime import date
 from typing import Any
 
-from sqlalchemy import select
+from sqlalchemy import Integer, cast, func, select
 from sqlalchemy.orm import Session
 
 from app.engine.models import Assumptions
@@ -441,9 +441,12 @@ class PurchaseOrderService:
         return po
 
     def _next_id(self) -> str:
-        ids = self.session.scalars(select(PurchaseOrder.id)).all()
-        numbers = [int(i[3:]) for i in ids if i.startswith("PO-") and i[3:].isdigit()]
-        return f"PO-{max([FIRST_AGENT_PO_NUMBER, *numbers]) + 1}"
+        row = self.session.scalar(
+            select(func.max(cast(func.substr(PurchaseOrder.id, 4), Integer))).where(
+                PurchaseOrder.id.like("PO-%")
+            )
+        )
+        return f"PO-{max(FIRST_AGENT_PO_NUMBER, row or 0) + 1}"
 
     def _terms(self, po: PurchaseOrder) -> SupplierTerm:
         terms = self.session.scalar(

@@ -46,6 +46,9 @@ export function RunDetail({ id }: { id: string }) {
     lastSeq.current = 0
     setSteps([])
     setRun(null)
+    setRec(null)
+    setError(null)
+    setResuming(false)
     refresh()
   }, [id, refresh])
 

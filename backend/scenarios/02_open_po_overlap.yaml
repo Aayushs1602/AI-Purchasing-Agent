@@ -10,8 +10,9 @@ world:
   recommendation: {id: REC-1002}
 expect:
   acceptable:
-    - {decision: modify, po_quantity: [480, 500], approval: not_required}
+    - {decision: modify, po_quantity: [480, 500], approval: required}
   must_cite: [open_pos]
   rationale: >-
     Inventory position is 620 (300 on hand + 320 on order), so the need is 480. Ordering 800
     would peak at 1,220 units, over the 1,200 storage capacity. One extra case (500) is fine.
+    Any change to the recommendation goes to a buyer for approval.

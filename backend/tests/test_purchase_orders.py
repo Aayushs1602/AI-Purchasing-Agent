@@ -192,7 +192,12 @@ class TestSupplierDeviations:
         assert (amended.po.status, amended.po.revision, amended.po.unit_cost) == ("draft", 2, 2.90)
         assert available(service.session, "REC-1010") == 2200
 
-        final = service.submit(po_id, actor="agent")
+        # 740 is not the recommended 800, so a buyer approves it before it goes out.
+        pending = service.submit(po_id, actor="agent")
+        assert pending.po.status == "pending_approval"
+        assert [r.code for r in pending.approval_reasons] == ["QUANTITY_CHANGED"]
+
+        final = service.approve(po_id, approver="buyer:ana")
 
         assert final.po.status == "confirmed"
         assert final.po.value == 2146.0
@@ -202,6 +207,8 @@ class TestSupplierDeviations:
             "submitted",
             "acknowledged",
             "amended",
+            "approval_requested",
+            "approved",
             "submitted",
             "acknowledged",
         ]

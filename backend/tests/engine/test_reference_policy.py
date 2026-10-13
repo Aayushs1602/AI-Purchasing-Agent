@@ -15,7 +15,7 @@ CASES = {
         {"open_purchase_orders": [open_po(320, eta_in_days=2)]},
         "modify",
         480,
-        False,
+        True,  # every change to the recommendation goes to a buyer
     ),
     # Rules are wrong: the PO is on hold, so it should not offset the need.
     "open_po_on_hold": (
@@ -25,7 +25,7 @@ CASES = {
         True,
     ),
     "budget_cap": ({"budget_available": 1500}, "modify", 600, True),
-    "storage_cap": ({"storage_capacity": 800}, "modify", 700, False),
+    "storage_cap": ({"storage_capacity": 800}, "modify", 700, True),
     "moq_roundup": ({"supplier": {"moq": 1000}}, "modify", 1000, True),
     "overstock_stale_rec": ({"on_hand": 1150}, "reject", 0, False),
     # Rules are wrong: sales have halved, but the rules still trust the forecast.

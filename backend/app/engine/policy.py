@@ -8,6 +8,10 @@ Every finding has a severity:
                  Any order placed on top of them needs human approval.
 - info:          context worth explaining, no approval needed.
 
+Approval is also needed for an order above the auto-approve value limit, and for any quantity
+other than the recommended one: the agent may place the recommendation as it stands, but every
+change to it goes to a buyer.
+
 Thresholds live in `PolicyConfig`, not in the agent's prompt, so the LLM cannot talk its way
 past them.
 """
@@ -33,6 +37,9 @@ class PolicyConfig(BaseModel):
     stale_count_days: int = 14
     stale_recommendation_threshold: float = 0.20
     min_confidence_for_auto_submit: float = 0.70
+    quantity_change_needs_approval: bool = Field(
+        True, description="Any quantity other than the recommended one goes to a buyer"
+    )
 
 
 DEFAULT_POLICY = PolicyConfig()
@@ -439,6 +446,24 @@ def evaluate_quantity(
                 ),
                 observed=projection.order_value,
                 limit=config.auto_approve_max_value,
+            )
+        )
+    if (
+        config.quantity_change_needs_approval
+        and recommended_qty
+        and quantity > 0
+        and quantity != recommended_qty
+    ):
+        approval.append(
+            Finding(
+                code="QUANTITY_CHANGED",
+                severity="soft",
+                message=(
+                    f"{quantity} units differs from the recommended {recommended_qty}; "
+                    "any change to the recommendation needs a buyer's approval."
+                ),
+                observed=quantity,
+                limit=recommended_qty,
             )
         )
     approval.extend(soft)

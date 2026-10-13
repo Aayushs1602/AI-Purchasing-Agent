@@ -108,6 +108,27 @@ class TestResume:
         assert session.get(Recommendation, "REC-1012").status == "decided"
         assert step_names(session, run_id, "system")[-2:] == ["resumed", "settled"]
 
+    def test_a_changed_quantity_goes_out_only_after_approval(self, factory):
+        def after_approval(results):
+            assert held_result(results)["data"]["outcome"] == "APPROVED_AND_SENT"
+            return finalize("modify", 480, factor="open_pos", value=320)
+
+        runner, run_id, _ = start(
+            factory,
+            "REC-1002",
+            [READS, create_po(480), submit(480, 1200), after_approval],
+        )
+
+        session, run, po = load(factory, run_id)
+        assert (run.status, po.status) == ("awaiting_approval", "pending_approval")
+        assert [r["code"] for r in po.approval_reasons] == ["QUANTITY_CHANGED"]
+
+        runner.resume(run_id, approve=True, approver="buyer:ana")
+
+        session, run, po = load(factory, run_id)
+        assert (run.status, run.decision, run.final_quantity) == ("completed", "modify", 480)
+        assert (po.status, po.approval_by) == ("confirmed", "buyer:ana")
+
     def test_decline_lets_the_agent_choose_another_path(self, factory):
         def after_decline(results):
             assert held_result(results)["data"]["outcome"] == "DECLINED"

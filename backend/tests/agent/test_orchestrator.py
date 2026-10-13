@@ -120,7 +120,7 @@ class TestHappyPaths:
         assert "get_budget" in client.sessions[0].system_prompt
         assert [s.name for s in steps(session, run.id, "system")] == ["kickoff", "settled"]
 
-    def test_modify_after_seeing_a_violation(self, run_agent):
+    def test_modify_after_seeing_a_violation_waits_for_a_buyer(self, run_agent):
         session, run, _ = run_agent(
             "REC-1002",
             [
@@ -131,12 +131,14 @@ class TestHappyPaths:
                 ],
                 create_po(480),
                 submit(480, 1200),
-                finalize("modify", 480, factor="open_pos", value=320),
             ],
         )
 
-        assert (run.status, run.decision) == ("completed", "modify")
-        assert run_po(session, run.id).outstanding_quantity == 480
+        # Every change to the recommendation pauses for a buyer (resume: test_approvals.py).
+        po = run_po(session, run.id)
+        assert run.status == "awaiting_approval"
+        assert (po.status, po.outstanding_quantity) == ("pending_approval", 480)
+        assert [r["code"] for r in po.approval_reasons] == ["QUANTITY_CHANGED"]
         first_eval = steps(session, run.id, "tool")[8]
         assert first_eval.payload["result"]["data"]["feasible"] is False
 

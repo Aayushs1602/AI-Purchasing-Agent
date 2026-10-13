@@ -4,6 +4,7 @@ import pytest
 
 from app.engine.models import Assumptions
 from app.engine.policy import (
+    PolicyConfig,
     RecommendationInputs,
     data_quality_flags,
     evaluate_quantity,
@@ -87,11 +88,11 @@ class TestSoftWarningsAndApproval:
         assert codes(ev.soft_warnings) == {"UNDER_COVERAGE"}  # 600 < 80% of 800
         assert ev.requires_approval
 
-    def test_storage_capped_order_within_tolerance_needs_no_approval(self):
+    def test_storage_capped_order_within_shortfall_tolerance(self):
         ev = evaluate_quantity(make_context(storage_capacity=800), 700)
 
         assert ev.feasible
-        assert not ev.requires_approval  # 700 >= 640
+        assert ev.soft_warnings == []  # 700 >= 640, so not under-covered
 
     @pytest.mark.parametrize(("qty", "flagged"), [(960, False), (980, True), (1000, True)])
     def test_increase_over_recommendation_threshold(self, qty, flagged):
@@ -105,7 +106,30 @@ class TestSoftWarningsAndApproval:
         ev = evaluate_quantity(ctx, 1000, recommended_qty=RECOMMENDED_QTY)
 
         assert ev.feasible
-        assert codes(ev.approval_reasons) == {"ABOVE_RECOMMENDATION"}
+        assert codes(ev.approval_reasons) == {"QUANTITY_CHANGED", "ABOVE_RECOMMENDATION"}
+
+    @pytest.mark.parametrize("qty", [480, 700, 820])
+    def test_any_change_to_the_recommendation_needs_approval(self, qty):
+        ctx = make_context(supplier={"moq": 400})
+        ev = evaluate_quantity(ctx, qty, recommended_qty=RECOMMENDED_QTY)
+
+        assert ev.requires_approval
+        assert "QUANTITY_CHANGED" in codes(ev.approval_reasons)
+
+    def test_recommended_quantity_needs_no_approval_for_the_change(self):
+        ev = evaluate_quantity(make_context(), 800, recommended_qty=RECOMMENDED_QTY)
+
+        assert "QUANTITY_CHANGED" not in codes(ev.approval_reasons)
+
+    def test_quantity_change_rule_can_be_switched_off(self):
+        ev = evaluate_quantity(
+            make_context(storage_capacity=800),
+            700,
+            recommended_qty=RECOMMENDED_QTY,
+            config=PolicyConfig(quantity_change_needs_approval=False),
+        )
+
+        assert not ev.requires_approval
 
     def test_high_value_order_needs_approval(self):
         ev = evaluate_quantity(make_context(supplier={"unit_cost": 4.50}), 800)

@@ -168,9 +168,12 @@ class TestSubmit:
         assert amended["purchase_order"]["status"] == "draft"
         assert amended["outcome_check"]["status"] == "AS_EXPECTED"
 
+        # The fix changes the recommended quantity, so a buyer signs it off before it goes out.
         resent = submit(ctx, po_id, 740, 2146)["data"]
-        assert resent["purchase_order"]["status"] == "confirmed"
-        assert resent["outcome_check"]["status"] == "AS_EXPECTED"
+        assert resent["outcome"] == "PENDING_APPROVAL"
+        assert [r["code"] for r in resent["purchase_order"]["approval_reasons"]] == [
+            "QUANTITY_CHANGED"
+        ]
 
     def test_partial_fill_is_an_unexpected_quantity(self, make_ctx):
         ctx = make_ctx("REC-1011")
@@ -188,7 +191,7 @@ class TestSubmit:
         }
         assert check["constraint_violations"] == []
         # 500 is >20% short of the need: the approval policy would have stopped it.
-        assert check["needs_human_approval"] == ["UNDER_COVERAGE"]
+        assert check["needs_human_approval"] == ["QUANTITY_CHANGED", "UNDER_COVERAGE"]
         assert (
             "accept the deviation and explain it in finalize_decision" not in check["next_actions"]
         )

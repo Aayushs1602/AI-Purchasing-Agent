@@ -10,8 +10,9 @@ world:
   recommendation: {id: REC-1005}
 expect:
   acceptable:
-    - {decision: modify, po_quantity: [600, 700], approval: any}
+    - {decision: modify, po_quantity: [600, 700], approval: required}
   must_cite: [storage]
   rationale: >-
     Stock will be 100 when the order arrives, so only 700 more fit in 800 units of space.
-    700 is within 20% of the need, so it needs no approval; going lower does.
+    700 is within 20% of the need, so it is not under-covered, but it changes the
+    recommendation, so a buyer approves it.

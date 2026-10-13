@@ -12,10 +12,10 @@ world:
   recommendation: {id: REC-1010}
 expect:
   acceptable:
-    - {decision: modify, po_quantity: [640, 740], approval: any}
+    - {decision: modify, po_quantity: [640, 740], approval: required}
     - {decision: investigate, po_quantity: [0, 0]}
   must_cite: [unit_cost, budget]
   rationale: >-
     The confirmed PO costs more than the budget, so it cannot stand. $2,200 buys 740 units
-    at $2.90: amend and resubmit (still within 20% of need), or cancel and escalate. Ending
-    with an over-budget PO is a failure.
+    at $2.90: amend and resubmit (a buyer approves the new quantity), or cancel and
+    escalate. Ending with an over-budget PO is a failure.

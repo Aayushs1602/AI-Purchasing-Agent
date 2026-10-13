@@ -191,9 +191,9 @@ class TestDeviationsNeedingApproval:
 
         check = submit(context, po_id, 800, 2000)["data"]["outcome_check"]
 
-        assert check["needs_human_approval"] == ["UNDER_COVERAGE"]
+        assert check["needs_human_approval"] == ["QUANTITY_CHANGED", "UNDER_COVERAGE"]
         assert not any("accept the deviation and explain" in a for a in check["next_actions"])
-        assert "needs a human's approval (UNDER_COVERAGE)" in problems(
+        assert "needs a human's approval (QUANTITY_CHANGED, UNDER_COVERAGE)" in problems(
             finalize(context, "modify", 500)
         )
 

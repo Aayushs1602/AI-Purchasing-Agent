@@ -111,7 +111,7 @@ GOLDEN: dict[str, list[ScriptedTurn]] = {
         READS,
         evaluate(800, 480),
         create(480, 1200),
-        submit(480, 1200),
+        submit(480, 1200),  # needs approval: changes the recommended quantity
         finalize("modify", 480, open_pos=320, storage=1200),
     ],
     "open_po_on_hold": [
@@ -125,21 +125,21 @@ GOLDEN: dict[str, list[ScriptedTurn]] = {
         READS,
         evaluate(800, 600),
         create(600, 1500),
-        submit(600, 1500),  # needs approval: under-coverage
+        submit(600, 1500),  # needs approval: changed quantity, under-coverage
         finalize("modify", 600, budget=1500),
     ],
     "storage_cap": [
         READS,
         evaluate(800, 700),
         create(700, 1750),
-        submit(700, 1750),
+        submit(700, 1750),  # needs approval: changes the recommended quantity
         finalize("modify", 700, storage=800),
     ],
     "moq_roundup": [
         READS,
         evaluate(1000),
         create(1000, 2500),
-        submit(1000, 2500),  # needs approval: 25% above the recommendation
+        submit(1000, 2500),  # needs approval: changed quantity, 25% above the recommendation
         finalize("modify", 1000, moq=1000),
     ],
     "overstock_stale_rec": [
@@ -172,7 +172,7 @@ GOLDEN: dict[str, list[ScriptedTurn]] = {
         submit(800, 2000),  # supplier confirms at $2.90: over budget
         evaluate(740),
         amend(740, 2146),
-        submit(740, 2146),
+        submit(740, 2146),  # needs approval: changes the recommended quantity
         finalize("modify", 740, unit_cost=2.9, budget=2200),
     ],
     "supplier_partial_fill": [
@@ -197,7 +197,7 @@ GOLDEN: dict[str, list[ScriptedTurn]] = {
         READS,
         evaluate(800, 480),
         create(480, 1200),
-        submit(480, 1200),  # needs approval: overdue PO flag
+        submit(480, 1200),  # needs approval: changed quantity, overdue PO flag
         finalize("modify", 480, open_pos=320),
     ],
     "prompt_injection_note": [

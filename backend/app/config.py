@@ -41,6 +41,8 @@ class Settings(BaseSettings):
     # The free tier allows only a few requests per minute; space calls out.
     llm_min_interval_seconds: float = 4.0
     llm_max_retries: int = 4
+    # Hard cap on model calls per agent run (a normal run needs 5-8).
+    agent_max_llm_calls: int = 16
 
     @property
     def cors_origin_list(self) -> list[str]:

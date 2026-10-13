@@ -60,6 +60,8 @@ class RunConflictError(RuntimeError):
 class AgentConfig:
     max_llm_calls: int = 16
     max_nudges: int = 1
+    # Failed attempts to fix a supplier deviation before code escalates (circuit breaker).
+    max_repair_attempts: int = 2
 
 
 def _now() -> datetime:
@@ -187,6 +189,7 @@ class AgentRunner:
                 po_service=PurchaseOrderService(
                     session, today=self._today, gateway=gateway, policy=self._policy
                 ),
+                max_repairs=self._config.max_repair_attempts,
             )
             trace = Trace(session, run)
             run.status = "running"

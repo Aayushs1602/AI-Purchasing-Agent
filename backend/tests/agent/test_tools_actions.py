@@ -251,3 +251,40 @@ class TestEscalateAndFinalize:
         result = call(ctx, "finalize_decision", **finalize_args(key_factors=bad))
 
         assert result["error"]["code"] == "INVALID_ARGUMENTS"
+
+
+class TestCircuitBreaker:
+    def resubmit_800(self, ctx, po_id):
+        call(ctx, "amend_purchase_order", po_id=po_id, quantity=800, expectation=expect(800, 2000))
+        return submit(ctx, po_id, 800, 2000)["data"]
+
+    def test_trips_after_two_failed_repairs_and_blocks_further_changes(self, make_ctx):
+        ctx = make_ctx("REC-1011")  # supplier only ever confirms 500
+        gather_evidence(ctx)
+        po_id = po_id_of(create(ctx, 800))
+
+        first = submit(ctx, po_id, 800, 2000)["data"]
+        assert first["circuit_breaker"] == {"tripped": False, "repair_attempts_left": 2}
+        assert self.resubmit_800(ctx, po_id)["circuit_breaker"]["repair_attempts_left"] == 1
+
+        third = self.resubmit_800(ctx, po_id)["circuit_breaker"]
+
+        assert third["tripped"] is True
+        escalation = ctx.session.get(Escalation, third["escalation_id"])
+        assert escalation.reason.startswith("[circuit breaker] PO-5001")
+        assert escalation.severity == "high"
+
+        blocked = call(
+            ctx, "amend_purchase_order", po_id=po_id, quantity=500, expectation=expect(500, 1250)
+        )
+        assert blocked["error"]["code"] == "CIRCUIT_OPEN"
+        # Cancelling stays possible: it can only make things safer.
+        assert call(ctx, "cancel_purchase_order", po_id=po_id, reason="human will decide")["ok"]
+
+    def test_outcomes_as_expected_do_not_count(self, make_ctx):
+        ctx = make_ctx()
+        gather_evidence(ctx)
+        po_id = po_id_of(create(ctx, 800))
+
+        assert submit(ctx, po_id, 800, 2000)["data"]["circuit_breaker"] is None
+        assert ctx.deviations == {}

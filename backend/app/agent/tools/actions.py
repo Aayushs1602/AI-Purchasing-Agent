@@ -15,7 +15,7 @@ from typing import Any, Literal
 from pydantic import Field
 from sqlalchemy import func, select
 
-from app.agent.checks import ActionExpectation, check_outcome
+from app.agent.checks import ActionExpectation, OutcomeCheck, check_outcome
 from app.agent.tools.base import RunContext, Tool, ToolArgs, ToolError, untrusted
 from app.agent.tools.investigate import assumptions_for
 from app.engine.models import Assumptions, Decision, Factor
@@ -31,6 +31,16 @@ def require_evidence(ctx: RunContext) -> None:
             "EVIDENCE_MISSING",
             "Gather this evidence before acting: " + ", ".join(missing),
             {"missing": missing},
+        )
+
+
+def require_circuit_closed(ctx: RunContext) -> None:
+    if ctx.circuit_open:
+        raise ToolError(
+            "CIRCUIT_OPEN",
+            "Repair attempts are exhausted and the case was escalated. No more PO changes in "
+            "this run (cancelling is still allowed). Call finalize_decision with decision "
+            "'investigate'.",
         )
 
 
@@ -116,6 +126,7 @@ class CreatePOArgs(ToolArgs):
 
 def create_purchase_order(ctx: RunContext, args: CreatePOArgs) -> dict:
     require_evidence(ctx)
+    require_circuit_closed(ctx)
     rec = ctx.recommendation
     result = ctx.po_service.create_draft(
         sku=rec.sku,
@@ -150,6 +161,7 @@ class AmendPOArgs(ToolArgs):
 
 def amend_purchase_order(ctx: RunContext, args: AmendPOArgs) -> dict:
     require_evidence(ctx)
+    require_circuit_closed(ctx)
     po = own_po(ctx, args.po_id)
     assumptions: Assumptions | None = None
     if args.exclude_po_ids is not None or args.demand_basis is not None:
@@ -189,6 +201,7 @@ class SubmitPOArgs(ToolArgs):
 
 def submit_purchase_order(ctx: RunContext, args: SubmitPOArgs) -> dict:
     require_evidence(ctx)
+    require_circuit_closed(ctx)
     po = own_po(ctx, args.po_id)
     result = ctx.po_service.submit(po.id, actor=ctx.actor, confidence=args.confidence)
 
@@ -203,12 +216,12 @@ def submit_purchase_order(ctx: RunContext, args: SubmitPOArgs) -> dict:
         )
 
     ack = result.ack
+    check = check_outcome(args.expectation, result.po, result.evaluation, sent=True)
     return po_result(
         result,
         outcome="SENT_TO_SUPPLIER",
-        outcome_check=check_outcome(
-            args.expectation, result.po, result.evaluation, sent=True
-        ).model_dump(),
+        outcome_check=check.model_dump(),
+        circuit_breaker=record_supplier_outcome(ctx, result.po, check),
         supplier_ack={
             "status": ack.status,
             "confirmed_quantity": ack.confirmed_quantity,
@@ -233,22 +246,75 @@ class EscalateArgs(ToolArgs):
     severity: Literal["low", "medium", "high"] = "medium"
 
 
-def escalate_to_human(ctx: RunContext, args: EscalateArgs) -> dict:
-    require_evidence(ctx)
+def open_escalation(
+    ctx: RunContext, *, severity: str, reason: str, questions: list[str], options: list[str]
+) -> Escalation:
     count = ctx.session.scalar(select(func.count()).select_from(Escalation)) or 0
     escalation = Escalation(
         id=f"ESC-{count + 1:04d}",
         run_id=ctx.run.id,
         recommendation_id=ctx.recommendation.id,
-        severity=args.severity,
-        reason=args.reason,
-        questions=args.questions,
-        options=args.options,
+        severity=severity,
+        reason=reason,
+        questions=questions,
+        options=options,
         created_on=ctx.today,
     )
     ctx.session.add(escalation)
     ctx.session.commit()
+    return escalation
+
+
+def escalate_to_human(ctx: RunContext, args: EscalateArgs) -> dict:
+    require_evidence(ctx)
+    escalation = open_escalation(
+        ctx,
+        severity=args.severity,
+        reason=args.reason,
+        questions=args.questions,
+        options=args.options,
+    )
     return {"escalation_id": escalation.id, "status": escalation.status}
+
+
+def record_supplier_outcome(ctx: RunContext, po: PurchaseOrder, check: OutcomeCheck) -> dict | None:
+    """Count supplier outcomes that differ from intent; trip the breaker after max_repairs.
+
+    The first deviation is the supplier's; each later one means a repair attempt failed. Once
+    the agent has used up its repair attempts, code (not the model) escalates and blocks
+    further PO changes, so a confused model cannot loop on the supplier forever.
+    """
+    if check.status == "AS_EXPECTED":
+        return None
+    count = ctx.deviations.get(po.id, 0) + 1
+    ctx.deviations[po.id] = count
+    if count <= ctx.max_repairs:
+        return {"tripped": False, "repair_attempts_left": ctx.max_repairs - count + 1}
+
+    ctx.circuit_open = True
+    problems = [d.message for d in check.differences] + check.constraint_violations
+    escalation = open_escalation(
+        ctx,
+        severity="high",
+        reason=(
+            f"[circuit breaker] {po.id} still differs from what was intended after "
+            f"{ctx.max_repairs} repair attempts: {'; '.join(problems)}"
+        ),
+        questions=[f"How should {po.id} be resolved?"],
+        options=[
+            "Accept the supplier's confirmation as it stands",
+            "Cancel it and source from another supplier",
+            "Cancel it and re-plan in the next review cycle",
+        ],
+    )
+    return {
+        "tripped": True,
+        "escalation_id": escalation.id,
+        "message": (
+            "Repair attempts are exhausted. The case was escalated to a human and further PO "
+            "changes are blocked. Call finalize_decision with decision 'investigate'."
+        ),
+    }
 
 
 class KeyFactor(ToolArgs):

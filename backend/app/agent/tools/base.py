@@ -69,6 +69,10 @@ class RunContext:
     call_id: str = ""  # id of the tool call being executed (used for idempotency)
     evidence: set[str] = field(default_factory=set)
     finalized: bool = False
+    # Circuit breaker: supplier outcomes that still differed from what was intended, per PO.
+    max_repairs: int = 2
+    deviations: dict[str, int] = field(default_factory=dict)
+    circuit_open: bool = False
 
     def purchasing_context(self) -> PurchasingContext:
         rec = self.recommendation

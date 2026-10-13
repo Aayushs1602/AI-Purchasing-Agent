@@ -10,15 +10,11 @@ interpret them (e.g. it cannot read that a PO is "on hold"), so it only routes t
 
 from __future__ import annotations
 
-from typing import Literal
-
 from pydantic import BaseModel
 
 from app.engine import inventory_math as im
-from app.engine.models import Assumptions, PurchasingContext
+from app.engine.models import Assumptions, Decision, PurchasingContext
 from app.engine.policy import DEFAULT_POLICY, PolicyConfig, QuantityEvaluation, evaluate_quantity
-
-Decision = Literal["accept", "modify", "reject", "investigate"]
 
 
 class ReferenceDecision(BaseModel):

@@ -15,23 +15,7 @@ from typing import Any, Literal
 import yaml
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
-Decision = Literal["accept", "modify", "reject", "investigate"]
-# Factors a decision rationale can cite; evals check the binding one is cited.
-Factor = Literal[
-    "net_need",
-    "on_hand",
-    "open_pos",
-    "forecast_drift",
-    "moq",
-    "case_pack",
-    "unit_cost",
-    "budget",
-    "storage",
-    "cover_days",
-    "order_value",
-    "supplier_fill",
-    "supplier_note",
-]
+from app.engine.models import Decision, Factor
 
 
 class _Strict(BaseModel):

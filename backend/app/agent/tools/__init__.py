@@ -7,6 +7,7 @@ import logging
 from pydantic import ValidationError
 
 from app.agent.llm.base import ToolCall, ToolSpec
+from app.agent.tools.actions import ACTION_TOOLS
 from app.agent.tools.base import REQUIRED_EVIDENCE, RunContext, Tool, ToolError, error, ok
 from app.agent.tools.investigate import INVESTIGATION_TOOLS
 from app.services.context import ContextNotFoundError
@@ -14,7 +15,7 @@ from app.services.purchase_orders import PurchaseOrderError
 
 log = logging.getLogger(__name__)
 
-TOOLS: dict[str, Tool] = {tool.name: tool for tool in INVESTIGATION_TOOLS}
+TOOLS: dict[str, Tool] = {tool.name: tool for tool in [*INVESTIGATION_TOOLS, *ACTION_TOOLS]}
 
 __all__ = ["REQUIRED_EVIDENCE", "TOOLS", "RunContext", "execute_tool", "tool_specs"]
 

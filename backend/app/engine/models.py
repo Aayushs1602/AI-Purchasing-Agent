@@ -8,6 +8,23 @@ from typing import Literal
 from pydantic import BaseModel, Field
 
 DemandBasis = Literal["forecast", "recent_actuals"]
+Decision = Literal["accept", "modify", "reject", "investigate"]
+# What a decision rationale may cite as a key factor (evals check the binding one is cited).
+Factor = Literal[
+    "net_need",
+    "on_hand",
+    "open_pos",
+    "forecast_drift",
+    "moq",
+    "case_pack",
+    "unit_cost",
+    "budget",
+    "storage",
+    "cover_days",
+    "order_value",
+    "supplier_fill",
+    "supplier_note",
+]
 
 
 class SupplierTerms(BaseModel):

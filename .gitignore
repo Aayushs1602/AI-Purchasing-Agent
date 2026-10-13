@@ -34,3 +34,7 @@ npm-debug.log*
 .idea/
 .DS_Store
 Thumbs.db
+
+# --- Evaluation scratch reports (CI and local runs; curated reports are committed) ---
+backend/evals/reports/ci-*
+backend/evals/reports/scratch-*

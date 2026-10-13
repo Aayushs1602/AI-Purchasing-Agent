@@ -1,16 +1,19 @@
 """Run the evaluation.
 
     python -m evals.run --mode scripted --strict          # golden trajectories (CI)
-    python -m evals.run --mode replay                     # recorded Gemini runs, no key
+    python -m evals.run --mode replay --strict            # recorded Gemini runs, no key
     python -m evals.run --mode live --repeats 3 --record  # real Gemini; save recordings
     python -m evals.run --mode live --scenarios budget_cap,storage_cap
 
 Reports go to evals/reports/<name>.md and .json (name defaults to the mode).
+--strict exits 1 if a scripted run is wrong, or if a replayed run does not reproduce the
+outcome stored in its recording (a live agent's wrong answers are findings, not CI failures).
 """
 
 from __future__ import annotations
 
 import argparse
+import json
 import sys
 import tempfile
 from datetime import datetime, timezone
@@ -38,7 +41,9 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--record", action="store_true", help="Live mode: save recordings")
     parser.add_argument("--name", help="Report file name (default: the mode)")
     parser.add_argument(
-        "--strict", action="store_true", help="Exit 1 unless every run has the right outcome"
+        "--strict",
+        action="store_true",
+        help="Exit 1 if scripted runs are wrong or replays differ from their recordings",
     )
     args = parser.parse_args(argv)
 
@@ -64,6 +69,7 @@ def main(argv: list[str] | None = None) -> int:
     model = model or live.model
 
     results: list[CaseResult] = []
+    mismatches: list[str] = []
     total = len(selected) * args.repeats
     with tempfile.TemporaryDirectory(prefix="evals-") as workdir:
         for scenario in selected:
@@ -85,6 +91,11 @@ def main(argv: list[str] | None = None) -> int:
                 if recording:
                     _save_recording(llm, scenario, result, settings.recordings_dir)
                 quantity = result.po_quantity if result.po_status else 0
+                if args.mode == "replay":
+                    mismatch = _replay_mismatch(settings.recordings_dir, scenario.id, result)
+                    if mismatch:
+                        mismatches.append(mismatch)
+                        print(f"REPLAY MISMATCH {mismatch}")
                 print(
                     f"[{len(results)}/{total}] {scenario.id} #{repeat}: "
                     f"{result.decision or result.status} {quantity} -> "
@@ -97,7 +108,11 @@ def main(argv: list[str] | None = None) -> int:
     report.write(results, selected, mode=args.mode, model=model, repeats=args.repeats, path=path)
     right = sum(r.grade.outcome for r in results)
     print(f"\n{right}/{len(results)} runs right. Report: {path.with_suffix('.md')}")
-    return 1 if args.strict and right < len(results) else 0
+    if not args.strict:
+        return 0
+    if args.mode == "replay":
+        return 1 if mismatches else 0
+    return 1 if args.mode == "scripted" and right < len(results) else 0
 
 
 def _client(mode: str, scenario_id: str, live: LLMClient | None, recordings: Path) -> LLMClient:
@@ -106,6 +121,17 @@ def _client(mode: str, scenario_id: str, live: LLMClient | None, recordings: Pat
     if mode == "replay":
         return ReplayClient(recordings)
     return live
+
+
+def _replay_mismatch(directory: Path, scenario_id: str, result: CaseResult) -> str | None:
+    """Did the replay end where the recorded live run ended?"""
+    path = directory / f"{scenario_id}.json"
+    if not path.exists():
+        return f"{scenario_id}: no recording"
+    recorded = json.loads(path.read_text(encoding="utf-8")).get("outcome") or {}
+    want = (recorded.get("decision"), recorded.get("po_quantity"))
+    got = (result.decision, result.po_quantity)
+    return None if want == got else f"{scenario_id}: recorded {want}, replayed {got}"
 
 
 def _save_recording(client: RecordingClient, scenario, result: CaseResult, directory: Path):

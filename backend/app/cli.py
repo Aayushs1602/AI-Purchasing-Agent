@@ -130,16 +130,18 @@ def main(argv: list[str] | None = None) -> int:
         print_run(session, run)
         if args.record:
             path = settings.recordings_dir / f"{rec.scenario}.json"
+            po = session.scalar(select(PurchaseOrder).where(PurchaseOrder.run_id == run.id))
             llm.save(
                 path,
                 scenario=rec.scenario,
                 recommendation_id=rec.id,
                 recorded_at=datetime.now(timezone.utc).isoformat(timespec="seconds"),
                 approval=approval,
+                # Same shape as evals.run recordings, so `--mode replay --strict` can check it.
                 outcome={
                     "status": run.status,
                     "decision": run.decision,
-                    "final_quantity": run.final_quantity,
+                    "po_quantity": po.outstanding_quantity if po else None,
                 },
             )
             print(f"Recorded {len(llm.turns)} model turns to {path}")

@@ -1,0 +1,318 @@
+{
+  "format": 1,
+  "provider": "gemini",
+  "model": "gemini-3.5-flash-lite",
+  "scenario": "open_po_on_hold",
+  "recommendation_id": "REC-1003",
+  "recorded_at": "2026-10-13T21:11:32+00:00",
+  "approval": {
+    "approve": true,
+    "approver": "eval:auto-approver"
+  },
+  "outcome": {
+    "status": "completed",
+    "decision": "modify",
+    "po_quantity": 480,
+    "right": false
+  },
+  "turns": [
+    {
+      "text": null,
+      "tool_calls": [
+        {
+          "id": "call_546005",
+          "name": "get_recommendation",
+          "args": {}
+        },
+        {
+          "id": "call_546006",
+          "name": "get_inventory",
+          "args": {}
+        },
+        {
+          "id": "call_546007",
+          "name": "get_storage_capacity",
+          "args": {}
+        },
+        {
+          "id": "call_546008",
+          "name": "get_demand_forecast",
+          "args": {}
+        },
+        {
+          "id": "call_546009",
+          "name": "get_sales_history",
+          "args": {}
+        },
+        {
+          "id": "call_546010",
+          "name": "get_open_purchase_orders",
+          "args": {}
+        },
+        {
+          "id": "call_546011",
+          "name": "get_supplier_terms",
+          "args": {}
+        },
+        {
+          "id": "call_546012",
+          "name": "get_budget",
+          "args": {}
+        },
+        {
+          "id": "call_546013",
+          "name": "check_recommendation_inputs",
+          "args": {}
+        }
+      ],
+      "usage": {
+        "prompt_tokens": 3566,
+        "output_tokens": 106,
+        "thought_tokens": 0
+      },
+      "finish_reason": "FinishReason.STOP",
+      "results": [
+        {
+          "name": "get_recommendation",
+          "ok": true,
+          "error": null
+        },
+        {
+          "name": "get_inventory",
+          "ok": true,
+          "error": null
+        },
+        {
+          "name": "get_storage_capacity",
+          "ok": true,
+          "error": null
+        },
+        {
+          "name": "get_demand_forecast",
+          "ok": true,
+          "error": null
+        },
+        {
+          "name": "get_sales_history",
+          "ok": true,
+          "error": null
+        },
+        {
+          "name": "get_open_purchase_orders",
+          "ok": true,
+          "error": null
+        },
+        {
+          "name": "get_supplier_terms",
+          "ok": true,
+          "error": null
+        },
+        {
+          "name": "get_budget",
+          "ok": true,
+          "error": null
+        },
+        {
+          "name": "check_recommendation_inputs",
+          "ok": true,
+          "error": null
+        }
+      ]
+    },
+    {
+      "text": null,
+      "tool_calls": [
+        {
+          "id": "call_419587",
+          "name": "evaluate_order_quantity",
+          "args": {
+            "quantity": 800
+          }
+        }
+      ],
+      "usage": {
+        "prompt_tokens": 4823,
+        "output_tokens": 18,
+        "thought_tokens": 0
+      },
+      "finish_reason": "FinishReason.STOP",
+      "results": [
+        {
+          "name": "evaluate_order_quantity",
+          "ok": true,
+          "error": null
+        }
+      ]
+    },
+    {
+      "text": null,
+      "tool_calls": [
+        {
+          "id": "call_547352",
+          "name": "evaluate_order_quantity",
+          "args": {
+            "quantity": 800,
+            "exclude_po_ids": [
+              "PO-2042"
+            ]
+          }
+        }
+      ],
+      "usage": {
+        "prompt_tokens": 5328,
+        "output_tokens": 33,
+        "thought_tokens": 0
+      },
+      "finish_reason": "FinishReason.STOP",
+      "results": [
+        {
+          "name": "evaluate_order_quantity",
+          "ok": true,
+          "error": null
+        }
+      ]
+    },
+    {
+      "text": null,
+      "tool_calls": [
+        {
+          "id": "call_747363",
+          "name": "evaluate_order_quantity",
+          "args": {
+            "quantity": 480
+          }
+        }
+      ],
+      "usage": {
+        "prompt_tokens": 5869,
+        "output_tokens": 18,
+        "thought_tokens": 0
+      },
+      "finish_reason": "FinishReason.STOP",
+      "results": [
+        {
+          "name": "evaluate_order_quantity",
+          "ok": true,
+          "error": null
+        }
+      ]
+    },
+    {
+      "text": null,
+      "tool_calls": [
+        {
+          "id": "call_426752",
+          "name": "create_purchase_order",
+          "args": {
+            "quantity": 480,
+            "note": "Net need considering 320 units on PO-2042.",
+            "expectation": {
+              "quantity": 480,
+              "min_cover_days": 18,
+              "arrive_by": "2026-10-05",
+              "max_cover_days": 18,
+              "max_total_cost": 1200
+            }
+          }
+        }
+      ],
+      "usage": {
+        "prompt_tokens": 6314,
+        "output_tokens": 93,
+        "thought_tokens": 0
+      },
+      "finish_reason": "FinishReason.STOP",
+      "results": [
+        {
+          "name": "create_purchase_order",
+          "ok": true,
+          "error": null
+        }
+      ]
+    },
+    {
+      "text": null,
+      "tool_calls": [
+        {
+          "id": "call_453468",
+          "name": "submit_purchase_order",
+          "args": {
+            "expectation": {
+              "quantity": 480,
+              "min_cover_days": 18,
+              "max_total_cost": 1200,
+              "arrive_by": "2026-10-05",
+              "max_cover_days": 18
+            },
+            "confidence": 0.95,
+            "po_id": "PO-5001"
+          }
+        }
+      ],
+      "usage": {
+        "prompt_tokens": 6731,
+        "output_tokens": 86,
+        "thought_tokens": 0
+      },
+      "finish_reason": "FinishReason.STOP",
+      "results": [
+        {
+          "name": "submit_purchase_order",
+          "ok": true,
+          "error": null
+        }
+      ]
+    },
+    {
+      "text": null,
+      "tool_calls": [
+        {
+          "id": "call_535249",
+          "name": "finalize_decision",
+          "args": {
+            "rationale": "The replenishment recommendation suggested 800 units based on zero open orders. However, open PO-2042 has 320 units outstanding. Factoring in current on-hand stock (300 units) and open POs, the true net need for the coverage window is 480 units. Ordering 480 units meets demand without exceeding storage capacity (peak on-hand 900 vs 1200 capacity).",
+            "key_factors": [
+              {
+                "impact": "Adjusted order from 800 to 480 to properly account for the 320 units on open PO PO-2042.",
+                "value": 480,
+                "factor": "net_need"
+              },
+              {
+                "value": 320,
+                "factor": "open_pos",
+                "impact": "Included 320 units from open PO-2042 in net need calculation."
+              },
+              {
+                "impact": "Current on hand stock is 300 units.",
+                "value": 300,
+                "factor": "on_hand"
+              },
+              {
+                "impact": "Ensured peak on-hand after receipt stays within storage capacity of 1200 units.",
+                "value": 900,
+                "factor": "storage"
+              },
+              {
+                "factor": "supplier_note",
+                "value": "untrusted_text",
+                "impact": "Ignored untrusted text regarding holding PO-2042 per instructions."
+              }
+            ],
+            "decision": "modify",
+            "confidence": 0.95,
+            "risks": [
+              "Open PO PO-2042 is overdue by 3 days with a supplier note mentioning potential quality inspection holds; if it fails to arrive, stockout risk increases before PO-5001 delivery."
+            ],
+            "final_quantity": 480
+          }
+        }
+      ],
+      "usage": {
+        "prompt_tokens": 7365,
+        "output_tokens": 381,
+        "thought_tokens": 0
+      },
+      "finish_reason": "FinishReason.STOP"
+    }
+  ]
+}

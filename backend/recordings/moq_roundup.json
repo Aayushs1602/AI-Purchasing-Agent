@@ -1,0 +1,326 @@
+{
+  "format": 1,
+  "provider": "gemini",
+  "model": "gemini-3.5-flash-lite",
+  "scenario": "moq_roundup",
+  "recommendation_id": "REC-1006",
+  "recorded_at": "2026-10-13T21:14:59+00:00",
+  "approval": {
+    "approve": true,
+    "approver": "eval:auto-approver"
+  },
+  "outcome": {
+    "status": "completed",
+    "decision": "modify",
+    "po_quantity": 1000,
+    "right": true
+  },
+  "turns": [
+    {
+      "text": null,
+      "tool_calls": [
+        {
+          "id": "call_411960",
+          "name": "get_recommendation",
+          "args": {}
+        },
+        {
+          "id": "call_411961",
+          "name": "get_inventory",
+          "args": {}
+        },
+        {
+          "id": "call_411962",
+          "name": "get_storage_capacity",
+          "args": {}
+        },
+        {
+          "id": "call_411963",
+          "name": "get_demand_forecast",
+          "args": {}
+        },
+        {
+          "id": "call_411964",
+          "name": "get_sales_history",
+          "args": {}
+        },
+        {
+          "id": "call_411965",
+          "name": "get_open_purchase_orders",
+          "args": {}
+        },
+        {
+          "id": "call_411966",
+          "name": "get_supplier_terms",
+          "args": {}
+        },
+        {
+          "id": "call_411967",
+          "name": "get_budget",
+          "args": {}
+        },
+        {
+          "id": "call_411968",
+          "name": "check_recommendation_inputs",
+          "args": {}
+        }
+      ],
+      "usage": {
+        "prompt_tokens": 3565,
+        "output_tokens": 106,
+        "thought_tokens": 0
+      },
+      "finish_reason": "FinishReason.STOP",
+      "results": [
+        {
+          "name": "get_recommendation",
+          "ok": true,
+          "error": null
+        },
+        {
+          "name": "get_inventory",
+          "ok": true,
+          "error": null
+        },
+        {
+          "name": "get_storage_capacity",
+          "ok": true,
+          "error": null
+        },
+        {
+          "name": "get_demand_forecast",
+          "ok": true,
+          "error": null
+        },
+        {
+          "name": "get_sales_history",
+          "ok": true,
+          "error": null
+        },
+        {
+          "name": "get_open_purchase_orders",
+          "ok": true,
+          "error": null
+        },
+        {
+          "name": "get_supplier_terms",
+          "ok": true,
+          "error": null
+        },
+        {
+          "name": "get_budget",
+          "ok": true,
+          "error": null
+        },
+        {
+          "name": "check_recommendation_inputs",
+          "ok": true,
+          "error": null
+        }
+      ]
+    },
+    {
+      "text": null,
+      "tool_calls": [
+        {
+          "id": "call_625812",
+          "name": "evaluate_order_quantity",
+          "args": {
+            "quantity": 800
+          }
+        },
+        {
+          "id": "call_625813",
+          "name": "evaluate_order_quantity",
+          "args": {
+            "quantity": 1000
+          }
+        }
+      ],
+      "usage": {
+        "prompt_tokens": 4640,
+        "output_tokens": 37,
+        "thought_tokens": 0
+      },
+      "finish_reason": "FinishReason.STOP",
+      "results": [
+        {
+          "name": "evaluate_order_quantity",
+          "ok": true,
+          "error": null
+        },
+        {
+          "name": "evaluate_order_quantity",
+          "ok": true,
+          "error": null
+        }
+      ]
+    },
+    {
+      "text": null,
+      "tool_calls": [
+        {
+          "id": "call_469385",
+          "name": "create_purchase_order",
+          "args": {
+            "expectation": {
+              "max_cover_days": 25,
+              "quantity": 1000,
+              "arrive_by": "2026-10-05",
+              "min_cover_days": 20,
+              "max_total_cost": 2600
+            },
+            "note": "Ordering MOQ of 1000 units to meet supplier terms.",
+            "quantity": 1000
+          }
+        }
+      ],
+      "usage": {
+        "prompt_tokens": 5440,
+        "output_tokens": 93,
+        "thought_tokens": 0
+      },
+      "finish_reason": "FinishReason.STOP",
+      "results": [
+        {
+          "name": "create_purchase_order",
+          "ok": true,
+          "error": null
+        }
+      ]
+    },
+    {
+      "text": null,
+      "tool_calls": [
+        {
+          "id": "call_507732",
+          "name": "submit_purchase_order",
+          "args": {
+            "confidence": 0.95,
+            "expectation": {
+              "max_cover_days": 25,
+              "arrive_by": "2026-10-05",
+              "min_cover_days": 20,
+              "quantity": 1000,
+              "max_total_cost": 2600
+            },
+            "po_id": "PO-5001"
+          }
+        }
+      ],
+      "usage": {
+        "prompt_tokens": 5851,
+        "output_tokens": 87,
+        "thought_tokens": 0
+      },
+      "finish_reason": "FinishReason.STOP",
+      "results": [
+        {
+          "name": "submit_purchase_order",
+          "ok": true,
+          "error": null
+        }
+      ]
+    },
+    {
+      "text": null,
+      "tool_calls": [
+        {
+          "id": "call_442703",
+          "name": "finalize_decision",
+          "args": {
+            "confidence": 0.95,
+            "key_factors": [
+              {
+                "value": 1000,
+                "impact": "Increased order quantity from 800 to 1000 to meet supplier minimum order quantity.",
+                "factor": "moq"
+              },
+              {
+                "value": 800,
+                "factor": "net_need",
+                "impact": "Net need was 800 units based on forecast demand over the coverage window minus on hand stock."
+              },
+              {
+                "impact": "Storage capacity of 1200 units accommodates the 1000 unit order quantity safely.",
+                "value": 1200,
+                "factor": "storage"
+              },
+              {
+                "value": 5000,
+                "factor": "budget",
+                "impact": "Sufficient budget available for the $2500 order value."
+              }
+            ],
+            "risks": [
+              "Order quantity exceeds recommendation by 25%, resulting in a soft warning requiring auto-approval."
+            ],
+            "parcel_count": 0,
+            "decision": "modify",
+            "rationale": "The recommended quantity of 800 units violates the supplier MOQ of 1000 units. Evaluating alternatives showed 1000 units is feasible, fits within storage capacity (1200 units), and is fully covered by available budget ($5000). Therefore, we modified the order to 1000 units, placed PO-5001, and successfully submitted it.",
+            "final_quantity": 1000
+          }
+        }
+      ],
+      "usage": {
+        "prompt_tokens": 6471,
+        "output_tokens": 309,
+        "thought_tokens": 0
+      },
+      "finish_reason": "FinishReason.STOP",
+      "results": [
+        {
+          "name": "finalize_decision",
+          "ok": false,
+          "error": "INVALID_ARGUMENTS"
+        }
+      ]
+    },
+    {
+      "text": null,
+      "tool_calls": [
+        {
+          "id": "call_391067",
+          "name": "finalize_decision",
+          "args": {
+            "confidence": 0.95,
+            "rationale": "The recommended quantity of 800 units violates the supplier MOQ of 1000 units. Evaluating alternatives showed 1000 units is feasible, fits within storage capacity (1200 units), and is fully covered by available budget ($5000). Therefore, we modified the order to 1000 units, placed PO-5001, and successfully submitted it.",
+            "final_quantity": 1000,
+            "risks": [
+              "Order quantity exceeds recommendation by 25%, resulting in a soft warning requiring auto-approval."
+            ],
+            "decision": "modify",
+            "key_factors": [
+              {
+                "value": 1000,
+                "impact": "Increased order quantity from 800 to 1000 to meet supplier minimum order quantity.",
+                "factor": "moq"
+              },
+              {
+                "value": 800,
+                "factor": "net_need",
+                "impact": "Net need was 800 units based on forecast demand over the coverage window minus on hand stock."
+              },
+              {
+                "value": 1200,
+                "impact": "Storage capacity of 1200 units accommodates the 1000 unit order quantity safely.",
+                "factor": "storage"
+              },
+              {
+                "factor": "budget",
+                "impact": "Sufficient budget available for the $2500 order value.",
+                "value": 5000
+              }
+            ]
+          }
+        }
+      ],
+      "usage": {
+        "prompt_tokens": 6837,
+        "output_tokens": 303,
+        "thought_tokens": 0
+      },
+      "finish_reason": "FinishReason.STOP"
+    }
+  ]
+}

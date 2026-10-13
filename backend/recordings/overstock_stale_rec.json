@@ -1,0 +1,198 @@
+{
+  "format": 1,
+  "provider": "gemini",
+  "model": "gemini-3.5-flash-lite",
+  "scenario": "overstock_stale_rec",
+  "recommendation_id": "REC-1007",
+  "recorded_at": "2026-10-13T21:15:52+00:00",
+  "approval": null,
+  "outcome": {
+    "status": "completed",
+    "decision": "reject",
+    "po_quantity": null,
+    "right": true
+  },
+  "turns": [
+    {
+      "text": null,
+      "tool_calls": [
+        {
+          "id": "call_124165",
+          "name": "get_recommendation",
+          "args": {}
+        },
+        {
+          "id": "call_124166",
+          "name": "get_inventory",
+          "args": {}
+        },
+        {
+          "id": "call_124167",
+          "name": "get_storage_capacity",
+          "args": {}
+        },
+        {
+          "id": "call_124168",
+          "name": "get_demand_forecast",
+          "args": {}
+        },
+        {
+          "id": "call_124169",
+          "name": "get_sales_history",
+          "args": {}
+        },
+        {
+          "id": "call_124170",
+          "name": "get_open_purchase_orders",
+          "args": {}
+        },
+        {
+          "id": "call_124171",
+          "name": "get_supplier_terms",
+          "args": {}
+        },
+        {
+          "id": "call_124172",
+          "name": "get_budget",
+          "args": {}
+        },
+        {
+          "id": "call_124173",
+          "name": "check_recommendation_inputs",
+          "args": {}
+        }
+      ],
+      "usage": {
+        "prompt_tokens": 3566,
+        "output_tokens": 106,
+        "thought_tokens": 97
+      },
+      "finish_reason": "FinishReason.STOP",
+      "results": [
+        {
+          "name": "get_recommendation",
+          "ok": true,
+          "error": null
+        },
+        {
+          "name": "get_inventory",
+          "ok": true,
+          "error": null
+        },
+        {
+          "name": "get_storage_capacity",
+          "ok": true,
+          "error": null
+        },
+        {
+          "name": "get_demand_forecast",
+          "ok": true,
+          "error": null
+        },
+        {
+          "name": "get_sales_history",
+          "ok": true,
+          "error": null
+        },
+        {
+          "name": "get_open_purchase_orders",
+          "ok": true,
+          "error": null
+        },
+        {
+          "name": "get_supplier_terms",
+          "ok": true,
+          "error": null
+        },
+        {
+          "name": "get_budget",
+          "ok": true,
+          "error": null
+        },
+        {
+          "name": "check_recommendation_inputs",
+          "ok": true,
+          "error": null
+        }
+      ]
+    },
+    {
+      "text": null,
+      "tool_calls": [
+        {
+          "id": "call_469873",
+          "name": "evaluate_order_quantity",
+          "args": {
+            "quantity": 800
+          }
+        },
+        {
+          "id": "call_469874",
+          "name": "evaluate_order_quantity",
+          "args": {
+            "quantity": 0
+          }
+        }
+      ],
+      "usage": {
+        "prompt_tokens": 4795,
+        "output_tokens": 34,
+        "thought_tokens": 107
+      },
+      "finish_reason": "FinishReason.STOP",
+      "results": [
+        {
+          "name": "evaluate_order_quantity",
+          "ok": true,
+          "error": null
+        },
+        {
+          "name": "evaluate_order_quantity",
+          "ok": true,
+          "error": null
+        }
+      ]
+    },
+    {
+      "text": null,
+      "tool_calls": [
+        {
+          "id": "call_586194",
+          "name": "finalize_decision",
+          "args": {
+            "confidence": 1,
+            "key_factors": [
+              {
+                "value": 1150,
+                "factor": "on_hand",
+                "impact": "Current on-hand stock is 1150 units, compared to 300 assumed by the recommendation, eliminating net need."
+              },
+              {
+                "factor": "net_need",
+                "value": 0,
+                "impact": "Net need is 0 units as inventory position exceeds the order-up-to level."
+              },
+              {
+                "impact": "Storage capacity is 1200 units, making any new order exceed capacity.",
+                "value": 1200,
+                "factor": "storage"
+              }
+            ],
+            "risks": [
+              "Overstock risk if orders were placed given current high inventory levels."
+            ],
+            "rationale": "The recommendation assumed 300 units on hand, but actual on-hand stock is 1150 units. Consequently, net need is 0 and inventory fully covers the coverage window. Furthermore, storage capacity is 1200 units, so ordering 800 units would violate storage constraints. Therefore, the recommendation is rejected.",
+            "final_quantity": 0,
+            "decision": "reject"
+          }
+        }
+      ],
+      "usage": {
+        "prompt_tokens": 5801,
+        "output_tokens": 245,
+        "thought_tokens": 105
+      },
+      "finish_reason": "FinishReason.STOP"
+    }
+  ]
+}

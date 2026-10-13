@@ -1,0 +1,259 @@
+{
+  "format": 1,
+  "provider": "gemini",
+  "model": "gemini-3.5-flash-lite",
+  "scenario": "high_value_approval",
+  "recommendation_id": "REC-1012",
+  "recorded_at": "2026-10-13T21:22:31+00:00",
+  "approval": {
+    "approve": true,
+    "approver": "eval:auto-approver"
+  },
+  "outcome": {
+    "status": "completed",
+    "decision": "accept",
+    "po_quantity": 800,
+    "right": true
+  },
+  "turns": [
+    {
+      "text": null,
+      "tool_calls": [
+        {
+          "id": "call_496253",
+          "name": "get_recommendation",
+          "args": {}
+        },
+        {
+          "id": "call_496254",
+          "name": "get_inventory",
+          "args": {}
+        },
+        {
+          "id": "call_496255",
+          "name": "get_storage_capacity",
+          "args": {}
+        },
+        {
+          "id": "call_496256",
+          "name": "get_demand_forecast",
+          "args": {}
+        },
+        {
+          "id": "call_496257",
+          "name": "get_sales_history",
+          "args": {}
+        },
+        {
+          "id": "call_496258",
+          "name": "get_open_purchase_orders",
+          "args": {}
+        },
+        {
+          "id": "call_496259",
+          "name": "get_supplier_terms",
+          "args": {}
+        },
+        {
+          "id": "call_496260",
+          "name": "get_budget",
+          "args": {}
+        },
+        {
+          "id": "call_496261",
+          "name": "check_recommendation_inputs",
+          "args": {}
+        }
+      ],
+      "usage": {
+        "prompt_tokens": 3568,
+        "output_tokens": 106,
+        "thought_tokens": 118
+      },
+      "finish_reason": "FinishReason.STOP",
+      "results": [
+        {
+          "name": "get_recommendation",
+          "ok": true,
+          "error": null
+        },
+        {
+          "name": "get_inventory",
+          "ok": true,
+          "error": null
+        },
+        {
+          "name": "get_storage_capacity",
+          "ok": true,
+          "error": null
+        },
+        {
+          "name": "get_demand_forecast",
+          "ok": true,
+          "error": null
+        },
+        {
+          "name": "get_sales_history",
+          "ok": true,
+          "error": null
+        },
+        {
+          "name": "get_open_purchase_orders",
+          "ok": true,
+          "error": null
+        },
+        {
+          "name": "get_supplier_terms",
+          "ok": true,
+          "error": null
+        },
+        {
+          "name": "get_budget",
+          "ok": true,
+          "error": null
+        },
+        {
+          "name": "check_recommendation_inputs",
+          "ok": true,
+          "error": null
+        }
+      ]
+    },
+    {
+      "text": null,
+      "tool_calls": [
+        {
+          "id": "call_487874",
+          "name": "evaluate_order_quantity",
+          "args": {
+            "quantity": 800
+          }
+        }
+      ],
+      "usage": {
+        "prompt_tokens": 4762,
+        "output_tokens": 18,
+        "thought_tokens": 38
+      },
+      "finish_reason": "FinishReason.STOP",
+      "results": [
+        {
+          "name": "evaluate_order_quantity",
+          "ok": true,
+          "error": null
+        }
+      ]
+    },
+    {
+      "text": null,
+      "tool_calls": [
+        {
+          "id": "call_616207",
+          "name": "create_purchase_order",
+          "args": {
+            "expectation": {
+              "quantity": 800,
+              "min_cover_days": 18,
+              "max_cover_days": 18,
+              "arrive_by": "2026-10-05",
+              "max_total_cost": 3600
+            },
+            "quantity": 800
+          }
+        }
+      ],
+      "usage": {
+        "prompt_tokens": 5187,
+        "output_tokens": 72,
+        "thought_tokens": 101
+      },
+      "finish_reason": "FinishReason.STOP",
+      "results": [
+        {
+          "name": "create_purchase_order",
+          "ok": true,
+          "error": null
+        }
+      ]
+    },
+    {
+      "text": null,
+      "tool_calls": [
+        {
+          "id": "call_461056",
+          "name": "submit_purchase_order",
+          "args": {
+            "expectation": {
+              "max_total_cost": 3600,
+              "quantity": 800,
+              "min_cover_days": 18,
+              "arrive_by": "2026-10-05",
+              "max_cover_days": 18
+            },
+            "confidence": 1,
+            "po_id": "PO-5001"
+          }
+        }
+      ],
+      "usage": {
+        "prompt_tokens": 5638,
+        "output_tokens": 83,
+        "thought_tokens": 16
+      },
+      "finish_reason": "FinishReason.STOP",
+      "results": [
+        {
+          "name": "submit_purchase_order",
+          "ok": true,
+          "error": null
+        }
+      ]
+    },
+    {
+      "text": null,
+      "tool_calls": [
+        {
+          "id": "call_464459",
+          "name": "finalize_decision",
+          "args": {
+            "risks": [
+              "Order value exceeds the $3,000 auto-approve limit, though auto-approved by harness."
+            ],
+            "key_factors": [
+              {
+                "impact": "Drove the base order quantity of 800 units",
+                "value": 800,
+                "factor": "net_need"
+              },
+              {
+                "factor": "on_hand",
+                "impact": "Current inventory of 300 units accounted for",
+                "value": 300
+              },
+              {
+                "value": 3600,
+                "impact": "Total order value of $3,600 exceeded auto-approve limit requiring review",
+                "factor": "order_value"
+              },
+              {
+                "factor": "budget",
+                "value": 5000,
+                "impact": "Available budget of $5,000 fully accommodates the $3,600 order"
+              }
+            ],
+            "confidence": 1,
+            "final_quantity": 800,
+            "rationale": "Net need is 800 units based on 300 on-hand units and 50 units/day forecast over the 18-day coverage window. The order value of $3,600 is fully covered by the available budget of $5,000 and fits storage capacity. The PO was successfully created, approved, and confirmed.",
+            "decision": "accept"
+          }
+        }
+      ],
+      "usage": {
+        "prompt_tokens": 6240,
+        "output_tokens": 277,
+        "thought_tokens": 147
+      },
+      "finish_reason": "FinishReason.STOP"
+    }
+  ]
+}

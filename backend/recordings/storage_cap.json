@@ -1,0 +1,277 @@
+{
+  "format": 1,
+  "provider": "gemini",
+  "model": "gemini-3.5-flash-lite",
+  "scenario": "storage_cap",
+  "recommendation_id": "REC-1005",
+  "recorded_at": "2026-10-13T21:13:48+00:00",
+  "approval": null,
+  "outcome": {
+    "status": "completed",
+    "decision": "modify",
+    "po_quantity": 700,
+    "right": true
+  },
+  "turns": [
+    {
+      "text": null,
+      "tool_calls": [
+        {
+          "id": "call_555154",
+          "name": "get_recommendation",
+          "args": {}
+        },
+        {
+          "id": "call_555155",
+          "name": "get_inventory",
+          "args": {}
+        },
+        {
+          "id": "call_555156",
+          "name": "get_storage_capacity",
+          "args": {}
+        },
+        {
+          "id": "call_555157",
+          "name": "get_demand_forecast",
+          "args": {}
+        },
+        {
+          "id": "call_555158",
+          "name": "get_sales_history",
+          "args": {}
+        },
+        {
+          "id": "call_555159",
+          "name": "get_open_purchase_orders",
+          "args": {}
+        },
+        {
+          "id": "call_555160",
+          "name": "get_supplier_terms",
+          "args": {}
+        },
+        {
+          "id": "call_555161",
+          "name": "get_budget",
+          "args": {}
+        },
+        {
+          "id": "call_555162",
+          "name": "check_recommendation_inputs",
+          "args": {}
+        }
+      ],
+      "usage": {
+        "prompt_tokens": 3562,
+        "output_tokens": 106,
+        "thought_tokens": 108
+      },
+      "finish_reason": "FinishReason.STOP",
+      "results": [
+        {
+          "name": "get_recommendation",
+          "ok": true,
+          "error": null
+        },
+        {
+          "name": "get_inventory",
+          "ok": true,
+          "error": null
+        },
+        {
+          "name": "get_storage_capacity",
+          "ok": true,
+          "error": null
+        },
+        {
+          "name": "get_demand_forecast",
+          "ok": true,
+          "error": null
+        },
+        {
+          "name": "get_sales_history",
+          "ok": true,
+          "error": null
+        },
+        {
+          "name": "get_open_purchase_orders",
+          "ok": true,
+          "error": null
+        },
+        {
+          "name": "get_supplier_terms",
+          "ok": true,
+          "error": null
+        },
+        {
+          "name": "get_budget",
+          "ok": true,
+          "error": null
+        },
+        {
+          "name": "check_recommendation_inputs",
+          "ok": true,
+          "error": null
+        }
+      ]
+    },
+    {
+      "text": null,
+      "tool_calls": [
+        {
+          "id": "call_428559",
+          "name": "evaluate_order_quantity",
+          "args": {
+            "quantity": 800
+          }
+        }
+      ],
+      "usage": {
+        "prompt_tokens": 4737,
+        "output_tokens": 18,
+        "thought_tokens": 45
+      },
+      "finish_reason": "FinishReason.STOP",
+      "results": [
+        {
+          "name": "evaluate_order_quantity",
+          "ok": true,
+          "error": null
+        }
+      ]
+    },
+    {
+      "text": null,
+      "tool_calls": [
+        {
+          "id": "call_413632",
+          "name": "evaluate_order_quantity",
+          "args": {
+            "quantity": 700
+          }
+        }
+      ],
+      "usage": {
+        "prompt_tokens": 5152,
+        "output_tokens": 18,
+        "thought_tokens": 67
+      },
+      "finish_reason": "FinishReason.STOP",
+      "results": [
+        {
+          "name": "evaluate_order_quantity",
+          "ok": true,
+          "error": null
+        }
+      ]
+    },
+    {
+      "text": null,
+      "tool_calls": [
+        {
+          "id": "call_758756",
+          "name": "create_purchase_order",
+          "args": {
+            "quantity": 700,
+            "expectation": {
+              "min_cover_days": 16,
+              "max_cover_days": 16,
+              "max_total_cost": 1750,
+              "arrive_by": "2026-10-05",
+              "quantity": 700
+            },
+            "note": "Adjusted from 800 to 700 due to storage capacity limit."
+          }
+        }
+      ],
+      "usage": {
+        "prompt_tokens": 5535,
+        "output_tokens": 95,
+        "thought_tokens": 91
+      },
+      "finish_reason": "FinishReason.STOP",
+      "results": [
+        {
+          "name": "create_purchase_order",
+          "ok": true,
+          "error": null
+        }
+      ]
+    },
+    {
+      "text": null,
+      "tool_calls": [
+        {
+          "id": "call_547824",
+          "name": "submit_purchase_order",
+          "args": {
+            "po_id": "PO-5001",
+            "confidence": 1,
+            "expectation": {
+              "arrive_by": "2026-10-05",
+              "min_cover_days": 16,
+              "max_cover_days": 16,
+              "max_total_cost": 1750,
+              "quantity": 700
+            }
+          }
+        }
+      ],
+      "usage": {
+        "prompt_tokens": 5997,
+        "output_tokens": 83,
+        "thought_tokens": 13
+      },
+      "finish_reason": "FinishReason.STOP",
+      "results": [
+        {
+          "name": "submit_purchase_order",
+          "ok": true,
+          "error": null
+        }
+      ]
+    },
+    {
+      "text": null,
+      "tool_calls": [
+        {
+          "id": "call_479790",
+          "name": "finalize_decision",
+          "args": {
+            "rationale": "The replenishment recommendation of 800 units exceeded the dark store's storage capacity of 800 units (resulting in a peak stock of 900 units). Evaluating alternative quantities showed that 700 units is feasible, satisfying MOQ, case pack, budget, and storage constraints without violating any hard limits. A purchase order for 700 units was created and confirmed by FrioExpress.",
+            "final_quantity": 700,
+            "risks": [
+              "Storage constraint restricts order quantity below net need, requiring closer monitoring to avoid potential stockouts if demand surges."
+            ],
+            "confidence": 1,
+            "decision": "modify",
+            "key_factors": [
+              {
+                "value": 800,
+                "impact": "Storage capacity is 800 units, limiting the recommended 800-unit order peak of 900 to a maximum feasible order of 700 units.",
+                "factor": "storage"
+              },
+              {
+                "value": 1750,
+                "factor": "order_value",
+                "impact": "Set to $1,750 for 700 units at $2.50 per unit, well within the $5,000 available budget."
+              },
+              {
+                "factor": "on_hand",
+                "value": 300,
+                "impact": "Current on-hand stock is 300 units."
+              }
+            ]
+          }
+        }
+      ],
+      "usage": {
+        "prompt_tokens": 6512,
+        "output_tokens": 290,
+        "thought_tokens": 68
+      },
+      "finish_reason": "FinishReason.STOP"
+    }
+  ]
+}

@@ -1,0 +1,282 @@
+{
+  "format": 1,
+  "provider": "gemini",
+  "model": "gemini-3.5-flash-lite",
+  "scenario": "forecast_drift",
+  "recommendation_id": "REC-1008",
+  "recorded_at": "2026-10-13T21:17:26+00:00",
+  "approval": {
+    "approve": true,
+    "approver": "eval:auto-approver"
+  },
+  "outcome": {
+    "status": "completed",
+    "decision": "modify",
+    "po_quantity": 400,
+    "right": true
+  },
+  "turns": [
+    {
+      "text": null,
+      "tool_calls": [
+        {
+          "id": "call_419184",
+          "name": "get_recommendation",
+          "args": {}
+        },
+        {
+          "id": "call_419185",
+          "name": "get_inventory",
+          "args": {}
+        },
+        {
+          "id": "call_419186",
+          "name": "get_storage_capacity",
+          "args": {}
+        },
+        {
+          "id": "call_419187",
+          "name": "get_demand_forecast",
+          "args": {}
+        },
+        {
+          "id": "call_419188",
+          "name": "get_sales_history",
+          "args": {}
+        },
+        {
+          "id": "call_419189",
+          "name": "get_open_purchase_orders",
+          "args": {}
+        },
+        {
+          "id": "call_419190",
+          "name": "get_supplier_terms",
+          "args": {}
+        },
+        {
+          "id": "call_419191",
+          "name": "get_budget",
+          "args": {}
+        },
+        {
+          "id": "call_419192",
+          "name": "check_recommendation_inputs",
+          "args": {}
+        }
+      ],
+      "usage": {
+        "prompt_tokens": 3567,
+        "output_tokens": 106,
+        "thought_tokens": 0
+      },
+      "finish_reason": "FinishReason.STOP",
+      "results": [
+        {
+          "name": "get_recommendation",
+          "ok": true,
+          "error": null
+        },
+        {
+          "name": "get_inventory",
+          "ok": true,
+          "error": null
+        },
+        {
+          "name": "get_storage_capacity",
+          "ok": true,
+          "error": null
+        },
+        {
+          "name": "get_demand_forecast",
+          "ok": true,
+          "error": null
+        },
+        {
+          "name": "get_sales_history",
+          "ok": true,
+          "error": null
+        },
+        {
+          "name": "get_open_purchase_orders",
+          "ok": true,
+          "error": null
+        },
+        {
+          "name": "get_supplier_terms",
+          "ok": true,
+          "error": null
+        },
+        {
+          "name": "get_budget",
+          "ok": true,
+          "error": null
+        },
+        {
+          "name": "check_recommendation_inputs",
+          "ok": true,
+          "error": null
+        }
+      ]
+    },
+    {
+      "text": null,
+      "tool_calls": [
+        {
+          "id": "call_55199",
+          "name": "evaluate_order_quantity",
+          "args": {
+            "quantity": 800
+          }
+        }
+      ],
+      "usage": {
+        "prompt_tokens": 4646,
+        "output_tokens": 18,
+        "thought_tokens": 0
+      },
+      "finish_reason": "FinishReason.STOP",
+      "results": [
+        {
+          "name": "evaluate_order_quantity",
+          "ok": true,
+          "error": null
+        }
+      ]
+    },
+    {
+      "text": null,
+      "tool_calls": [
+        {
+          "id": "call_493071",
+          "name": "evaluate_order_quantity",
+          "args": {
+            "demand_basis": "recent_actuals",
+            "quantity": 400
+          }
+        }
+      ],
+      "usage": {
+        "prompt_tokens": 5086,
+        "output_tokens": 29,
+        "thought_tokens": 0
+      },
+      "finish_reason": "FinishReason.STOP",
+      "results": [
+        {
+          "name": "evaluate_order_quantity",
+          "ok": true,
+          "error": null
+        }
+      ]
+    },
+    {
+      "text": null,
+      "tool_calls": [
+        {
+          "id": "call_484637",
+          "name": "create_purchase_order",
+          "args": {
+            "quantity": 400,
+            "demand_basis": "recent_actuals",
+            "expectation": {
+              "quantity": 400,
+              "arrive_by": "2026-10-05",
+              "min_cover_days": 20,
+              "max_total_cost": 1000,
+              "max_cover_days": 25
+            },
+            "note": "Adjusted to MOQ 400 and recent actual sales (25/day) due to forecast drift."
+          }
+        }
+      ],
+      "usage": {
+        "prompt_tokens": 5610,
+        "output_tokens": 111,
+        "thought_tokens": 0
+      },
+      "finish_reason": "FinishReason.STOP",
+      "results": [
+        {
+          "name": "create_purchase_order",
+          "ok": true,
+          "error": null
+        }
+      ]
+    },
+    {
+      "text": null,
+      "tool_calls": [
+        {
+          "id": "call_363846",
+          "name": "submit_purchase_order",
+          "args": {
+            "confidence": 0.9,
+            "expectation": {
+              "quantity": 400,
+              "min_cover_days": 20,
+              "max_total_cost": 1000,
+              "max_cover_days": 25,
+              "arrive_by": "2026-10-05"
+            },
+            "po_id": "PO-5001"
+          }
+        }
+      ],
+      "usage": {
+        "prompt_tokens": 6092,
+        "output_tokens": 85,
+        "thought_tokens": 0
+      },
+      "finish_reason": "FinishReason.STOP",
+      "results": [
+        {
+          "name": "submit_purchase_order",
+          "ok": true,
+          "error": null
+        }
+      ]
+    },
+    {
+      "text": null,
+      "tool_calls": [
+        {
+          "id": "call_398855",
+          "name": "finalize_decision",
+          "args": {
+            "confidence": 0.9,
+            "risks": [
+              "Sales may increase back to forecast levels, leading to faster stock depletion, though 24 days of cover provides a solid buffer."
+            ],
+            "key_factors": [
+              {
+                "value": 25,
+                "factor": "forecast_drift",
+                "impact": "Sales averaged 25 units/day over the last 14 days vs 50 forecast (-50%), making the recommended 800 units excessive."
+              },
+              {
+                "value": 400,
+                "impact": "Supplier MOQ is 400 units, which matches the net need based on recent actuals.",
+                "factor": "moq"
+              },
+              {
+                "value": 300,
+                "factor": "on_hand",
+                "impact": "Current on-hand stock is 300 units."
+              }
+            ],
+            "rationale": "The recommendation of 800 units is based on a forecast of 50 units/day. However, sales over the last 14 days averaged 25 units/day (a -50% forecast drift). Using recent actuals, the net need is 350 units. To satisfy this while adhering to the supplier MOQ of 400 units, the order quantity was modified from 800 to 400 units, achieving a healthy cover of 24 days without overstocking.",
+            "final_quantity": 400,
+            "decision": "modify"
+          }
+        }
+      ],
+      "usage": {
+        "prompt_tokens": 6795,
+        "output_tokens": 303,
+        "thought_tokens": 0
+      },
+      "finish_reason": "FinishReason.STOP"
+    }
+  ]
+}

@@ -1,0 +1,298 @@
+{
+  "format": 1,
+  "provider": "gemini",
+  "model": "gemini-3.5-flash-lite",
+  "scenario": "open_po_overlap",
+  "recommendation_id": "REC-1002",
+  "recorded_at": "2026-10-13T21:10:20+00:00",
+  "approval": null,
+  "outcome": {
+    "status": "completed",
+    "decision": "modify",
+    "po_quantity": 400,
+    "right": false
+  },
+  "turns": [
+    {
+      "text": null,
+      "tool_calls": [
+        {
+          "id": "call_415740",
+          "name": "get_recommendation",
+          "args": {}
+        },
+        {
+          "id": "call_415741",
+          "name": "get_inventory",
+          "args": {}
+        },
+        {
+          "id": "call_415742",
+          "name": "get_storage_capacity",
+          "args": {}
+        },
+        {
+          "id": "call_415743",
+          "name": "get_demand_forecast",
+          "args": {}
+        },
+        {
+          "id": "call_415744",
+          "name": "get_sales_history",
+          "args": {}
+        },
+        {
+          "id": "call_415745",
+          "name": "get_open_purchase_orders",
+          "args": {}
+        },
+        {
+          "id": "call_415746",
+          "name": "get_supplier_terms",
+          "args": {}
+        },
+        {
+          "id": "call_415747",
+          "name": "get_budget",
+          "args": {}
+        },
+        {
+          "id": "call_415748",
+          "name": "check_recommendation_inputs",
+          "args": {}
+        }
+      ],
+      "usage": {
+        "prompt_tokens": 3570,
+        "output_tokens": 106,
+        "thought_tokens": 0
+      },
+      "finish_reason": "FinishReason.STOP",
+      "results": [
+        {
+          "name": "get_recommendation",
+          "ok": true,
+          "error": null
+        },
+        {
+          "name": "get_inventory",
+          "ok": true,
+          "error": null
+        },
+        {
+          "name": "get_storage_capacity",
+          "ok": true,
+          "error": null
+        },
+        {
+          "name": "get_demand_forecast",
+          "ok": true,
+          "error": null
+        },
+        {
+          "name": "get_sales_history",
+          "ok": true,
+          "error": null
+        },
+        {
+          "name": "get_open_purchase_orders",
+          "ok": true,
+          "error": null
+        },
+        {
+          "name": "get_supplier_terms",
+          "ok": true,
+          "error": null
+        },
+        {
+          "name": "get_budget",
+          "ok": true,
+          "error": null
+        },
+        {
+          "name": "check_recommendation_inputs",
+          "ok": true,
+          "error": null
+        }
+      ]
+    },
+    {
+      "text": null,
+      "tool_calls": [
+        {
+          "id": "call_623917",
+          "name": "evaluate_order_quantity",
+          "args": {
+            "quantity": 800
+          }
+        },
+        {
+          "id": "call_623918",
+          "name": "evaluate_order_quantity",
+          "args": {
+            "quantity": 400
+          }
+        }
+      ],
+      "usage": {
+        "prompt_tokens": 4778,
+        "output_tokens": 36,
+        "thought_tokens": 0
+      },
+      "finish_reason": "FinishReason.STOP",
+      "results": [
+        {
+          "name": "evaluate_order_quantity",
+          "ok": true,
+          "error": null
+        },
+        {
+          "name": "evaluate_order_quantity",
+          "ok": true,
+          "error": null
+        }
+      ]
+    },
+    {
+      "text": null,
+      "tool_calls": [
+        {
+          "id": "call_207185",
+          "name": "create_purchase_order",
+          "args": {
+            "quantity": 400,
+            "expectation": {
+              "max_cover_days": 18,
+              "min_valid_quantity": 400,
+              "arrive_by": "2026-10-05",
+              "quantity": 400,
+              "max_total_cost": 1000
+            }
+          }
+        }
+      ],
+      "usage": {
+        "prompt_tokens": 5470,
+        "output_tokens": 73,
+        "thought_tokens": 0
+      },
+      "finish_reason": "FinishReason.STOP",
+      "results": [
+        {
+          "name": "create_purchase_order",
+          "ok": false,
+          "error": "INVALID_ARGUMENTS"
+        }
+      ]
+    },
+    {
+      "text": null,
+      "tool_calls": [
+        {
+          "id": "call_477521",
+          "name": "create_purchase_order",
+          "args": {
+            "expectation": {
+              "arrive_by": "2026-10-05",
+              "max_cover_days": 18,
+              "max_total_cost": 1000,
+              "quantity": 400
+            },
+            "quantity": 400
+          }
+        }
+      ],
+      "usage": {
+        "prompt_tokens": 5608,
+        "output_tokens": 63,
+        "thought_tokens": 0
+      },
+      "finish_reason": "FinishReason.STOP",
+      "results": [
+        {
+          "name": "create_purchase_order",
+          "ok": true,
+          "error": null
+        }
+      ]
+    },
+    {
+      "text": null,
+      "tool_calls": [
+        {
+          "id": "call_600475",
+          "name": "submit_purchase_order",
+          "args": {
+            "po_id": "PO-5001",
+            "confidence": 1,
+            "expectation": {
+              "max_total_cost": 1000,
+              "max_cover_days": 18,
+              "quantity": 400,
+              "arrive_by": "2026-10-05"
+            }
+          }
+        }
+      ],
+      "usage": {
+        "prompt_tokens": 5947,
+        "output_tokens": 74,
+        "thought_tokens": 0
+      },
+      "finish_reason": "FinishReason.STOP",
+      "results": [
+        {
+          "name": "submit_purchase_order",
+          "ok": true,
+          "error": null
+        }
+      ]
+    },
+    {
+      "text": null,
+      "tool_calls": [
+        {
+          "id": "call_467126",
+          "name": "finalize_decision",
+          "args": {
+            "decision": "modify",
+            "final_quantity": 400,
+            "confidence": 1,
+            "key_factors": [
+              {
+                "impact": "The recommended 800 units caused a storage capacity violation (peak stock 1220 vs 1200 capacity).",
+                "value": 1200,
+                "factor": "storage"
+              },
+              {
+                "factor": "open_pos",
+                "value": 320,
+                "impact": "Open PO of 320 units reduced net need compared to the recommendation's assumption of zero open POs."
+              },
+              {
+                "factor": "net_need",
+                "value": 480,
+                "impact": "Net need for the coverage window is 480 units, which is satisfied by the MOQ of 400 units."
+              },
+              {
+                "impact": "MOQ of 400 units set the lower bound for the order.",
+                "value": 400,
+                "factor": "moq"
+              }
+            ],
+            "risks": [
+              "Storage capacity is tightly constrained with peak stock reaching 820 units on receipt."
+            ],
+            "rationale": "The recommended quantity of 800 units exceeded storage capacity (peaking at 1220 units against a limit of 1200) and ignored an existing open PO of 320 units. Accounting for open stock and storage limits, the feasible order quantity is the MOQ of 400 units, which meets net need without violating constraints."
+          }
+        }
+      ],
+      "usage": {
+        "prompt_tokens": 6440,
+        "output_tokens": 305,
+        "thought_tokens": 0
+      },
+      "finish_reason": "FinishReason.STOP"
+    }
+  ]
+}

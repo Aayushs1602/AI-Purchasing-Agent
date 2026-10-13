@@ -1,0 +1,285 @@
+{
+  "format": 1,
+  "provider": "gemini",
+  "model": "gemini-3.5-flash-lite",
+  "scenario": "budget_cap",
+  "recommendation_id": "REC-1004",
+  "recorded_at": "2026-10-13T21:12:36+00:00",
+  "approval": {
+    "approve": true,
+    "approver": "eval:auto-approver"
+  },
+  "outcome": {
+    "status": "completed",
+    "decision": "modify",
+    "po_quantity": 600,
+    "right": true
+  },
+  "turns": [
+    {
+      "text": null,
+      "tool_calls": [
+        {
+          "id": "call_757877",
+          "name": "get_recommendation",
+          "args": {}
+        },
+        {
+          "id": "call_757878",
+          "name": "get_inventory",
+          "args": {}
+        },
+        {
+          "id": "call_757879",
+          "name": "get_storage_capacity",
+          "args": {}
+        },
+        {
+          "id": "call_757880",
+          "name": "get_demand_forecast",
+          "args": {}
+        },
+        {
+          "id": "call_757881",
+          "name": "get_sales_history",
+          "args": {}
+        },
+        {
+          "id": "call_757882",
+          "name": "get_open_purchase_orders",
+          "args": {}
+        },
+        {
+          "id": "call_757883",
+          "name": "get_supplier_terms",
+          "args": {}
+        },
+        {
+          "id": "call_757884",
+          "name": "get_budget",
+          "args": {}
+        },
+        {
+          "id": "call_757885",
+          "name": "check_recommendation_inputs",
+          "args": {}
+        }
+      ],
+      "usage": {
+        "prompt_tokens": 3568,
+        "output_tokens": 106,
+        "thought_tokens": 67
+      },
+      "finish_reason": "FinishReason.STOP",
+      "results": [
+        {
+          "name": "get_recommendation",
+          "ok": true,
+          "error": null
+        },
+        {
+          "name": "get_inventory",
+          "ok": true,
+          "error": null
+        },
+        {
+          "name": "get_storage_capacity",
+          "ok": true,
+          "error": null
+        },
+        {
+          "name": "get_demand_forecast",
+          "ok": true,
+          "error": null
+        },
+        {
+          "name": "get_sales_history",
+          "ok": true,
+          "error": null
+        },
+        {
+          "name": "get_open_purchase_orders",
+          "ok": true,
+          "error": null
+        },
+        {
+          "name": "get_supplier_terms",
+          "ok": true,
+          "error": null
+        },
+        {
+          "name": "get_budget",
+          "ok": true,
+          "error": null
+        },
+        {
+          "name": "check_recommendation_inputs",
+          "ok": true,
+          "error": null
+        }
+      ]
+    },
+    {
+      "text": null,
+      "tool_calls": [
+        {
+          "id": "call_580475",
+          "name": "evaluate_order_quantity",
+          "args": {
+            "quantity": 800
+          }
+        }
+      ],
+      "usage": {
+        "prompt_tokens": 4718,
+        "output_tokens": 18,
+        "thought_tokens": 24
+      },
+      "finish_reason": "FinishReason.STOP",
+      "results": [
+        {
+          "name": "evaluate_order_quantity",
+          "ok": true,
+          "error": null
+        }
+      ]
+    },
+    {
+      "text": null,
+      "tool_calls": [
+        {
+          "id": "call_433957",
+          "name": "evaluate_order_quantity",
+          "args": {
+            "quantity": 600
+          }
+        }
+      ],
+      "usage": {
+        "prompt_tokens": 5117,
+        "output_tokens": 18,
+        "thought_tokens": 49
+      },
+      "finish_reason": "FinishReason.STOP",
+      "results": [
+        {
+          "name": "evaluate_order_quantity",
+          "ok": true,
+          "error": null
+        }
+      ]
+    },
+    {
+      "text": null,
+      "tool_calls": [
+        {
+          "id": "call_760236",
+          "name": "create_purchase_order",
+          "args": {
+            "expectation": {
+              "max_cover_days": 18,
+              "min_cover_days": 14,
+              "quantity": 600,
+              "max_total_cost": 1500,
+              "arrive_by": "2026-10-05"
+            },
+            "quantity": 600,
+            "note": "Ordering max affordable quantity due to budget limit"
+          }
+        }
+      ],
+      "usage": {
+        "prompt_tokens": 5587,
+        "output_tokens": 85,
+        "thought_tokens": 72
+      },
+      "finish_reason": "FinishReason.STOP",
+      "results": [
+        {
+          "name": "create_purchase_order",
+          "ok": true,
+          "error": null
+        }
+      ]
+    },
+    {
+      "text": null,
+      "tool_calls": [
+        {
+          "id": "call_332207",
+          "name": "submit_purchase_order",
+          "args": {
+            "expectation": {
+              "max_cover_days": 18,
+              "min_cover_days": 14,
+              "arrive_by": "2026-10-05",
+              "max_total_cost": 1500,
+              "quantity": 600
+            },
+            "po_id": "PO-5001",
+            "confidence": 0.9
+          }
+        }
+      ],
+      "usage": {
+        "prompt_tokens": 6055,
+        "output_tokens": 85,
+        "thought_tokens": 6
+      },
+      "finish_reason": "FinishReason.STOP",
+      "results": [
+        {
+          "name": "submit_purchase_order",
+          "ok": true,
+          "error": null
+        }
+      ]
+    },
+    {
+      "text": null,
+      "tool_calls": [
+        {
+          "id": "call_260639",
+          "name": "finalize_decision",
+          "args": {
+            "final_quantity": 600,
+            "key_factors": [
+              {
+                "factor": "budget",
+                "impact": "Limited available budget to $1,500, restricting order quantity to 600 units instead of the recommended 800.",
+                "value": 1500
+              },
+              {
+                "value": 800,
+                "impact": "Computed net need was 800 units.",
+                "factor": "net_need"
+              },
+              {
+                "value": 1500,
+                "impact": "The 600-unit order costs exactly the available budget of $1,500.",
+                "factor": "order_value"
+              },
+              {
+                "value": 14,
+                "factor": "cover_days",
+                "impact": "Provides 14 days of cover after receipt."
+              }
+            ],
+            "decision": "modify",
+            "confidence": 0.9,
+            "rationale": "The recommended quantity of 800 units ($2,000) exceeded the available category budget of $1,500. We modified the order to 600 units, the maximum affordable quantity, utilizing the entire available budget. This provides 14 days of cover and was successfully approved and confirmed.",
+            "risks": [
+              "Order is below net need (under-coverage warning), which may require a supplementary order later when budget renews."
+            ]
+          }
+        }
+      ],
+      "usage": {
+        "prompt_tokens": 6668,
+        "output_tokens": 281,
+        "thought_tokens": 97
+      },
+      "finish_reason": "FinishReason.STOP"
+    }
+  ]
+}

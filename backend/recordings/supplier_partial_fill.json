@@ -1,0 +1,320 @@
+{
+  "format": 1,
+  "provider": "gemini",
+  "model": "gemini-3.5-flash-lite",
+  "scenario": "supplier_partial_fill",
+  "recommendation_id": "REC-1011",
+  "recorded_at": "2026-10-13T21:21:15+00:00",
+  "approval": {
+    "approve": true,
+    "approver": "eval:auto-approver"
+  },
+  "outcome": {
+    "status": "completed",
+    "decision": "modify",
+    "po_quantity": 500,
+    "right": true
+  },
+  "turns": [
+    {
+      "text": null,
+      "tool_calls": [
+        {
+          "id": "call_343617",
+          "name": "get_recommendation",
+          "args": {}
+        },
+        {
+          "id": "call_343618",
+          "name": "get_inventory",
+          "args": {}
+        },
+        {
+          "id": "call_343619",
+          "name": "get_storage_capacity",
+          "args": {}
+        },
+        {
+          "id": "call_343620",
+          "name": "get_demand_forecast",
+          "args": {}
+        },
+        {
+          "id": "call_343621",
+          "name": "get_sales_history",
+          "args": {}
+        },
+        {
+          "id": "call_343622",
+          "name": "get_open_purchase_orders",
+          "args": {}
+        },
+        {
+          "id": "call_343623",
+          "name": "get_supplier_terms",
+          "args": {}
+        },
+        {
+          "id": "call_343624",
+          "name": "get_budget",
+          "args": {}
+        },
+        {
+          "id": "call_343625",
+          "name": "check_recommendation_inputs",
+          "args": {}
+        }
+      ],
+      "usage": {
+        "prompt_tokens": 3567,
+        "output_tokens": 106,
+        "thought_tokens": 0
+      },
+      "finish_reason": "FinishReason.STOP",
+      "results": [
+        {
+          "name": "get_recommendation",
+          "ok": true,
+          "error": null
+        },
+        {
+          "name": "get_inventory",
+          "ok": true,
+          "error": null
+        },
+        {
+          "name": "get_storage_capacity",
+          "ok": true,
+          "error": null
+        },
+        {
+          "name": "get_demand_forecast",
+          "ok": true,
+          "error": null
+        },
+        {
+          "name": "get_sales_history",
+          "ok": true,
+          "error": null
+        },
+        {
+          "name": "get_open_purchase_orders",
+          "ok": true,
+          "error": null
+        },
+        {
+          "name": "get_supplier_terms",
+          "ok": true,
+          "error": null
+        },
+        {
+          "name": "get_budget",
+          "ok": true,
+          "error": null
+        },
+        {
+          "name": "check_recommendation_inputs",
+          "ok": true,
+          "error": null
+        }
+      ]
+    },
+    {
+      "text": null,
+      "tool_calls": [
+        {
+          "id": "call_561249",
+          "name": "evaluate_order_quantity",
+          "args": {
+            "quantity": 800
+          }
+        }
+      ],
+      "usage": {
+        "prompt_tokens": 4645,
+        "output_tokens": 18,
+        "thought_tokens": 0
+      },
+      "finish_reason": "FinishReason.STOP",
+      "results": [
+        {
+          "name": "evaluate_order_quantity",
+          "ok": true,
+          "error": null
+        }
+      ]
+    },
+    {
+      "text": null,
+      "tool_calls": [
+        {
+          "id": "call_446391",
+          "name": "create_purchase_order",
+          "args": {
+            "expectation": {
+              "min_cover_days": 18,
+              "quantity": 800,
+              "max_total_cost": 2000,
+              "arrive_by": "2026-10-05",
+              "max_cover_days": 18
+            },
+            "quantity": 800
+          }
+        }
+      ],
+      "usage": {
+        "prompt_tokens": 4963,
+        "output_tokens": 72,
+        "thought_tokens": 0
+      },
+      "finish_reason": "FinishReason.STOP",
+      "results": [
+        {
+          "name": "create_purchase_order",
+          "ok": true,
+          "error": null
+        }
+      ]
+    },
+    {
+      "text": null,
+      "tool_calls": [
+        {
+          "id": "call_436684",
+          "name": "submit_purchase_order",
+          "args": {
+            "expectation": {
+              "max_total_cost": 2000,
+              "arrive_by": "2026-10-05",
+              "max_cover_days": 18,
+              "quantity": 800,
+              "min_cover_days": 18
+            },
+            "po_id": "PO-5001",
+            "confidence": 1
+          }
+        }
+      ],
+      "usage": {
+        "prompt_tokens": 5313,
+        "output_tokens": 83,
+        "thought_tokens": 0
+      },
+      "finish_reason": "FinishReason.STOP",
+      "results": [
+        {
+          "name": "submit_purchase_order",
+          "ok": true,
+          "error": null
+        }
+      ]
+    },
+    {
+      "text": null,
+      "tool_calls": [
+        {
+          "id": "call_528314",
+          "name": "amend_purchase_order",
+          "args": {
+            "expectation": {
+              "quantity": 500,
+              "arrive_by": "2026-10-05",
+              "max_cover_days": 12,
+              "max_total_cost": 1250,
+              "min_cover_days": 12
+            },
+            "quantity": 500,
+            "po_id": "PO-5001"
+          }
+        }
+      ],
+      "usage": {
+        "prompt_tokens": 6025,
+        "output_tokens": 86,
+        "thought_tokens": 0
+      },
+      "finish_reason": "FinishReason.STOP",
+      "results": [
+        {
+          "name": "amend_purchase_order",
+          "ok": true,
+          "error": null
+        }
+      ]
+    },
+    {
+      "text": null,
+      "tool_calls": [
+        {
+          "id": "call_561392",
+          "name": "submit_purchase_order",
+          "args": {
+            "confidence": 0.8,
+            "po_id": "PO-5001",
+            "expectation": {
+              "arrive_by": "2026-10-05",
+              "quantity": 500,
+              "max_total_cost": 1250,
+              "max_cover_days": 12,
+              "min_cover_days": 12
+            }
+          }
+        }
+      ],
+      "usage": {
+        "prompt_tokens": 6424,
+        "output_tokens": 85,
+        "thought_tokens": 0
+      },
+      "finish_reason": "FinishReason.STOP",
+      "results": [
+        {
+          "name": "submit_purchase_order",
+          "ok": true,
+          "error": null
+        }
+      ]
+    },
+    {
+      "text": null,
+      "tool_calls": [
+        {
+          "id": "call_528422",
+          "name": "finalize_decision",
+          "args": {
+            "rationale": "The replenishment recommendation was 800 units. However, the supplier (Lacteos La Sabana) partially confirmed only 500 units due to stock constraints, resulting in a cover days reduction to 12 days. We amended the PO to 500 units, which was approved and confirmed.",
+            "final_quantity": 500,
+            "key_factors": [
+              {
+                "value": 800,
+                "factor": "net_need",
+                "impact": "The initial net need was 800 units, but the supplier could only confirm 500 units due to availability."
+              },
+              {
+                "factor": "supplier_fill",
+                "value": 500,
+                "impact": "Supplier confirmed 500 units instead of 800, leaving a shortfall of 300 units in the coverage window."
+              },
+              {
+                "impact": "Supplier portal noted that only 500 units are available this cycle.",
+                "value": "Only 500 of 800 units can be supplied this cycle",
+                "factor": "supplier_note"
+              }
+            ],
+            "risks": [
+              "Shortfall of 300 units against net need creates a risk of stockout late in the coverage window if demand spikes."
+            ],
+            "decision": "modify",
+            "confidence": 0.9
+          }
+        }
+      ],
+      "usage": {
+        "prompt_tokens": 7035,
+        "output_tokens": 278,
+        "thought_tokens": 0
+      },
+      "finish_reason": "FinishReason.STOP"
+    }
+  ]
+}

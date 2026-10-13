@@ -1,0 +1,232 @@
+{
+  "format": 1,
+  "provider": "gemini",
+  "model": "gemini-3.5-flash-lite",
+  "scenario": "infeasible_moq_budget",
+  "recommendation_id": "REC-1009",
+  "recorded_at": "2026-10-13T21:18:30+00:00",
+  "approval": null,
+  "outcome": {
+    "status": "escalated",
+    "decision": "investigate",
+    "po_quantity": null,
+    "right": true
+  },
+  "turns": [
+    {
+      "text": null,
+      "tool_calls": [
+        {
+          "id": "call_498872",
+          "name": "get_recommendation",
+          "args": {}
+        },
+        {
+          "id": "call_498873",
+          "name": "get_inventory",
+          "args": {}
+        },
+        {
+          "id": "call_498874",
+          "name": "get_storage_capacity",
+          "args": {}
+        },
+        {
+          "id": "call_498875",
+          "name": "get_demand_forecast",
+          "args": {}
+        },
+        {
+          "id": "call_498876",
+          "name": "get_sales_history",
+          "args": {}
+        },
+        {
+          "id": "call_498877",
+          "name": "get_open_purchase_orders",
+          "args": {}
+        },
+        {
+          "id": "call_498878",
+          "name": "get_supplier_terms",
+          "args": {}
+        },
+        {
+          "id": "call_498879",
+          "name": "get_budget",
+          "args": {}
+        },
+        {
+          "id": "call_498880",
+          "name": "check_recommendation_inputs",
+          "args": {}
+        }
+      ],
+      "usage": {
+        "prompt_tokens": 3565,
+        "output_tokens": 106,
+        "thought_tokens": 58
+      },
+      "finish_reason": "FinishReason.STOP",
+      "results": [
+        {
+          "name": "get_recommendation",
+          "ok": true,
+          "error": null
+        },
+        {
+          "name": "get_inventory",
+          "ok": true,
+          "error": null
+        },
+        {
+          "name": "get_storage_capacity",
+          "ok": true,
+          "error": null
+        },
+        {
+          "name": "get_demand_forecast",
+          "ok": true,
+          "error": null
+        },
+        {
+          "name": "get_sales_history",
+          "ok": true,
+          "error": null
+        },
+        {
+          "name": "get_open_purchase_orders",
+          "ok": true,
+          "error": null
+        },
+        {
+          "name": "get_supplier_terms",
+          "ok": true,
+          "error": null
+        },
+        {
+          "name": "get_budget",
+          "ok": true,
+          "error": null
+        },
+        {
+          "name": "check_recommendation_inputs",
+          "ok": true,
+          "error": null
+        }
+      ]
+    },
+    {
+      "text": null,
+      "tool_calls": [
+        {
+          "id": "call_398513",
+          "name": "evaluate_order_quantity",
+          "args": {
+            "quantity": 800
+          }
+        },
+        {
+          "id": "call_398514",
+          "name": "evaluate_order_quantity",
+          "args": {
+            "quantity": 1000
+          }
+        }
+      ],
+      "usage": {
+        "prompt_tokens": 4696,
+        "output_tokens": 37,
+        "thought_tokens": 92
+      },
+      "finish_reason": "FinishReason.STOP",
+      "results": [
+        {
+          "name": "evaluate_order_quantity",
+          "ok": true,
+          "error": null
+        },
+        {
+          "name": "evaluate_order_quantity",
+          "ok": true,
+          "error": null
+        }
+      ]
+    },
+    {
+      "text": null,
+      "tool_calls": [
+        {
+          "id": "call_471076",
+          "name": "escalate_to_human",
+          "args": {
+            "options": [
+              "Increase monthly budget for Household category",
+              "Negotiate MOQ exception with Central Mayorista"
+            ],
+            "reason": "The recommended quantity of 800 units violates the supplier MOQ of 1,000 units. However, ordering the minimum 1,000 units costs $2,500, which exceeds the available budget of $2,000. No feasible order quantity satisfies both constraints simultaneously.",
+            "questions": [
+              "Can we increase the available budget for the Household category from $2,000 to at least $2,500 to meet the MOQ of 1,000 units?",
+              "Can we negotiate a lower MOQ with Central Mayorista so we can order within our $2,000 budget limit?"
+            ],
+            "severity": "high"
+          }
+        }
+      ],
+      "usage": {
+        "prompt_tokens": 5639,
+        "output_tokens": 182,
+        "thought_tokens": 170
+      },
+      "finish_reason": "FinishReason.STOP",
+      "results": [
+        {
+          "name": "escalate_to_human",
+          "ok": true,
+          "error": null
+        }
+      ]
+    },
+    {
+      "text": null,
+      "tool_calls": [
+        {
+          "id": "call_480925",
+          "name": "finalize_decision",
+          "args": {
+            "decision": "investigate",
+            "confidence": 1,
+            "rationale": "The recommended quantity of 800 units fails the supplier MOQ of 1,000 units. However, ordering the MOQ of 1,000 units requires $2,500, exceeding our available budget of $2,000. Because no feasible order satisfies both constraints, the case was escalated to human buyers.",
+            "key_factors": [
+              {
+                "impact": "Supplier MOQ is 1,000 units, making the recommended 800 units invalid.",
+                "value": 1000,
+                "factor": "moq"
+              },
+              {
+                "impact": "Available budget is $2,000, but ordering the MOQ of 1,000 units costs $2,500, exceeding budget.",
+                "value": 2000,
+                "factor": "budget"
+              },
+              {
+                "value": 2.5,
+                "impact": "Unit cost of $2.50 drives the budget violation at MOQ.",
+                "factor": "unit_cost"
+              }
+            ],
+            "final_quantity": 0,
+            "risks": [
+              "Stockout risk if inventory runs out while waiting for budget or MOQ resolution."
+            ]
+          }
+        }
+      ],
+      "usage": {
+        "prompt_tokens": 6028,
+        "output_tokens": 255,
+        "thought_tokens": 60
+      },
+      "finish_reason": "FinishReason.STOP"
+    }
+  ]
+}

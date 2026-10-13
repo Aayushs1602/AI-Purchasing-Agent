@@ -22,12 +22,21 @@ from app.agent.checks import (
     decision_problems,
     grounding_problems,
 )
-from app.agent.tools.base import RunContext, Tool, ToolArgs, ToolError, untrusted
+from app.agent.tools.base import (
+    RunContext,
+    Tool,
+    ToolArgs,
+    ToolError,
+    collect_numbers,
+    error,
+    ok,
+    untrusted,
+)
 from app.agent.tools.investigate import assumptions_for
 from app.engine.models import Assumptions, Decision, Factor
 from app.engine.policy import QuantityEvaluation
 from app.models import Escalation, PurchaseOrder
-from app.services.purchase_orders import POResult
+from app.services.purchase_orders import POResult, PurchaseOrderError
 
 
 def require_evidence(ctx: RunContext) -> None:
@@ -221,11 +230,23 @@ def submit_purchase_order(ctx: RunContext, args: SubmitPOArgs) -> dict:
             explanation="Policy requires a human to approve this PO before it is sent.",
         )
 
+    return sent_result(ctx, result, args.expectation, outcome="SENT_TO_SUPPLIER")
+
+
+def sent_result(
+    ctx: RunContext,
+    result: POResult,
+    expectation: ActionExpectation,
+    *,
+    outcome: str,
+    **extra: Any,
+) -> dict:
+    """Result of a PO reaching the supplier: the ack, a re-validation and the outcome check."""
     ack = result.ack
-    check = check_outcome(args.expectation, result.po, result.evaluation, sent=True)
+    check = check_outcome(expectation, result.po, result.evaluation, sent=True)
     return po_result(
         result,
-        outcome="SENT_TO_SUPPLIER",
+        outcome=outcome,
         outcome_check=check.model_dump(),
         circuit_breaker=record_supplier_outcome(ctx, result.po, check),
         supplier_ack={
@@ -239,7 +260,50 @@ def submit_purchase_order(ctx: RunContext, args: SubmitPOArgs) -> dict:
             "'validation' re-checks the PO as the supplier confirmed it; 'outcome_check' compares "
             "it with your expectation."
         ),
+        **extra,
     )
+
+
+def approval_result(
+    ctx: RunContext,
+    *,
+    po_id: str,
+    expectation: dict[str, Any],
+    approve: bool,
+    approver: str,
+    comment: str | None,
+) -> dict:
+    """Apply a human's approval decision and phrase it as the paused submit's tool result."""
+    decision = {"approved": approve, "by": approver, "comment": comment}
+    try:
+        if approve:
+            result = ctx.po_service.approve(po_id, approver=approver, comment=comment)
+            envelope = ok(
+                sent_result(
+                    ctx,
+                    result,
+                    ActionExpectation.model_validate(expectation),
+                    outcome="APPROVED_AND_SENT",
+                    approval=decision,
+                )
+            )
+        else:
+            result = ctx.po_service.decline(po_id, approver=approver, comment=comment or "")
+            envelope = ok(
+                po_result(
+                    result,
+                    outcome="DECLINED",
+                    approval=decision,
+                    next_step=(
+                        "The buyer declined this PO. Decide what to do instead (a different "
+                        "order, escalate, or reject), then finalize."
+                    ),
+                )
+            )
+    except PurchaseOrderError as exc:
+        envelope = error(exc.code, f"The approval could not be applied: {exc.message}")
+    collect_numbers(envelope, ctx.observed_numbers)
+    return envelope
 
 
 # --- Escalation and decision -------------------------------------------------------------

@@ -91,6 +91,23 @@ class RunContext:
     def missing_evidence(self) -> list[str]:
         return [item for item in REQUIRED_EVIDENCE if item not in self.evidence]
 
+    def to_state(self) -> dict[str, Any]:
+        """What must survive a pause for approval (evidence is kept on the run itself)."""
+        return {
+            "deviations": self.deviations,
+            "circuit_open": self.circuit_open,
+            "observed_numbers": sorted(self.observed_numbers),
+            "finalize_rejections": self.finalize_rejections,
+        }
+
+    def restore_state(self, state: dict[str, Any] | None, evidence: list[str] | None) -> None:
+        state = state or {}
+        self.evidence = set(evidence or [])
+        self.deviations = dict(state.get("deviations", {}))
+        self.circuit_open = bool(state.get("circuit_open", False))
+        self.observed_numbers = set(state.get("observed_numbers", []))
+        self.finalize_rejections = int(state.get("finalize_rejections", 0))
+
 
 @dataclass(frozen=True)
 class Tool:

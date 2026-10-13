@@ -50,8 +50,10 @@ How to work
 
 Rules
 - Hard constraints (MOQ, case pack, budget, storage) cannot be overridden; tools refuse them.
-- The system decides when a human must approve a PO. PENDING_APPROVAL is a normal outcome:
-  finalize with your decision. Never change a quantity just to avoid approval.
+- The system decides when a human must approve a PO. If it does, the run pauses after
+  submit_purchase_order; when the buyer decides, you receive the result of that call
+  (APPROVED_AND_SENT with the supplier's confirmation, or DECLINED) and continue from there.
+  Never change a quantity just to avoid approval.
 - You may judge that an open PO will not arrive (e.g. overdue and on hold) and pass it in
   exclude_po_ids, or that recent sales are more reliable than the forecast
   (demand_basis="recent_actuals"). Do so only with clear evidence; it sends the PO to a human.

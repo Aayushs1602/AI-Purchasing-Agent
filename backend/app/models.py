@@ -30,7 +30,7 @@ class Base(DeclarativeBase):
 
 # Bump whenever a table or column changes. On startup a database stamped with another
 # version is rebuilt from the scenarios (demo data only; production would use migrations).
-SCHEMA_VERSION = 4
+SCHEMA_VERSION = 5
 
 
 class SchemaInfo(Base):
@@ -254,6 +254,10 @@ class AgentRun(Base):
     validation_issues: Mapped[list[str] | None] = mapped_column(JSON, default=None)
     # Provider-native conversation, kept so a paused run can resume where it stopped.
     history: Mapped[list[dict[str, Any]] | None] = mapped_column(JSON, default=None)
+    # While awaiting approval: the submit call being held and the other results of its turn.
+    paused_state: Mapped[dict[str, Any] | None] = mapped_column(JSON, default=None)
+    # Loop state that must survive a pause (circuit breaker counts, numbers the agent saw).
+    agent_state: Mapped[dict[str, Any] | None] = mapped_column(JSON, default=None)
     # Wall-clock times (real, not simulated): they measure how long the agent took.
     started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), default=None)

@@ -1,12 +1,18 @@
-"""Runs the agent: the tool-use loop around the LLM, with limits and a full trace.
+"""Runs the agent: the tool-use loop around the LLM, with limits, pauses and a full trace.
 
     kickoff ─► model turn ─► execute tool calls ─► results back to the model ─► ...
-                  │                                     └─ until finalize_decision succeeds
+                  │                │                    └─ until finalize_decision succeeds
+                  │                └─ submit needs approval: pause; resume when a human decides
                   └─ no tool call: nudge once, then stop the run as failed
 
 Guardrails owned by the loop (not the model): a budget of model calls per run, one nudge
 when the model stops calling tools, LLM failures ending the run cleanly, and every turn,
 tool call and intervention written to `agent_steps` as it happens.
+
+Approval pause: when a submit needs a human, its result is held back from the model. The run
+stores the model's turn, the other results of that turn and its loop state, and waits in
+`awaiting_approval`. `resume()` applies the human's decision, sends it to the model as the
+result of that same tool call, and the loop continues.
 """
 
 from __future__ import annotations
@@ -19,12 +25,14 @@ from dataclasses import dataclass
 from datetime import date, datetime, timezone
 from typing import Any
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session, sessionmaker
 
 from app.agent.llm.base import LLMClient, LLMError, LLMResponse, LLMSession, ToolCall, ToolResult
 from app.agent.prompts import NUDGE, SYSTEM_PROMPT, kickoff_message
 from app.agent.tools import RunContext, execute_tool, tool_specs
+from app.agent.tools.actions import approval_result
+from app.agent.tools.base import error
 from app.engine.policy import DEFAULT_POLICY, PolicyConfig
 from app.models import (
     AgentRun,
@@ -56,6 +64,10 @@ class RunConflictError(RuntimeError):
     """The recommendation already has a run in progress."""
 
 
+class RunNotPausedError(RuntimeError):
+    """resume() was called on a run that is not waiting for approval."""
+
+
 @dataclass(frozen=True)
 class AgentConfig:
     max_llm_calls: int = 16
@@ -74,7 +86,10 @@ class Trace:
     def __init__(self, session: Session, run: AgentRun):
         self._session = session
         self._run = run
-        self._seq = 0
+        # A resumed run continues numbering where it paused.
+        self._seq = session.scalar(
+            select(func.coalesce(func.max(AgentStep.seq), 0)).where(AgentStep.run_id == run.id)
+        )
 
     def llm_turn(self, send: Callable[[], LLMResponse], *, sent: str | None = None) -> LLMResponse:
         started = time.perf_counter()
@@ -126,6 +141,10 @@ class Trace:
         )
 
 
+# A function that sends the first message of a drive (kickoff or resumed results).
+Starter = Callable[[LLMSession, RunContext, Trace], LLMResponse]
+
+
 class AgentRunner:
     def __init__(
         self,
@@ -145,7 +164,7 @@ class AgentRunner:
         self._gateway_factory = gateway_factory
 
     def run(self, recommendation_id: str) -> str:
-        """Create a run and execute it to the end. Returns the run id."""
+        """Create a run and execute it until it ends or pauses. Returns the run id."""
         run_id = self.create_run(recommendation_id)
         self.execute(run_id)
         return run_id
@@ -176,52 +195,106 @@ class AgentRunner:
             return run.id
 
     def execute(self, run_id: str) -> None:
+        def start(llm_session: LLMSession, ctx: RunContext, trace: Trace) -> LLMResponse:
+            kickoff = self._kickoff(ctx.session, ctx.recommendation)
+            trace.note("system", "kickoff", {"message": kickoff})
+            return trace.llm_turn(lambda: llm_session.send_message(kickoff), sent=kickoff)
+
+        with self._session_factory() as session:
+            self._drive(session, session.get(AgentRun, run_id), start, history=None)
+
+    def resume(
+        self, run_id: str, *, approve: bool, approver: str, comment: str | None = None
+    ) -> None:
+        """Apply a human's approval decision to a paused run and let the agent continue."""
         with self._session_factory() as session:
             run = session.get(AgentRun, run_id)
-            rec = session.get(Recommendation, run.recommendation_id)
-            gateway = self._gateway_factory(session) if self._gateway_factory else None
-            ctx = RunContext(
-                session=session,
-                run=run,
-                recommendation=rec,
-                today=self._today,
-                policy=self._policy,
-                po_service=PurchaseOrderService(
-                    session, today=self._today, gateway=gateway, policy=self._policy
-                ),
-                max_repairs=self._config.max_repair_attempts,
-            )
-            trace = Trace(session, run)
-            run.status = "running"
-            rec.status = "in_review"
+            if run is None or run.status != "awaiting_approval" or not run.paused_state:
+                raise RunNotPausedError(f"Run {run_id} is not waiting for approval")
+            paused = dict(run.paused_state)
+
+            def start(llm_session: LLMSession, ctx: RunContext, trace: Trace) -> LLMResponse:
+                held = ToolCall(paused["call_id"], "submit_purchase_order", {"resumed": True})
+                payload = trace.tool(
+                    held,
+                    lambda: approval_result(
+                        ctx,
+                        po_id=paused["po_id"],
+                        expectation=paused["expectation"],
+                        approve=approve,
+                        approver=approver,
+                        comment=comment,
+                    ),
+                )
+                trace.note(
+                    "system",
+                    "resumed",
+                    {"approved": approve, "approver": approver, "comment": comment},
+                )
+                results = [
+                    ToolResult(
+                        r["call_id"],
+                        r["name"],
+                        payload if r["call_id"] == paused["call_id"] else r["payload"],
+                    )
+                    for r in paused["results"]
+                ]
+                ctx.run.paused_state = None
+                return trace.llm_turn(lambda: llm_session.send_tool_results(results))
+
+            self._drive(session, run, start, history=run.history)
+
+    # --- Driving the loop ----------------------------------------------------------------
+
+    def _drive(
+        self,
+        session: Session,
+        run: AgentRun,
+        start: Starter,
+        *,
+        history: list[dict[str, Any]] | None,
+    ) -> None:
+        rec = session.get(Recommendation, run.recommendation_id)
+        gateway = self._gateway_factory(session) if self._gateway_factory else None
+        ctx = RunContext(
+            session=session,
+            run=run,
+            recommendation=rec,
+            today=self._today,
+            policy=self._policy,
+            po_service=PurchaseOrderService(
+                session, today=self._today, gateway=gateway, policy=self._policy
+            ),
+            max_repairs=self._config.max_repair_attempts,
+        )
+        ctx.restore_state(run.agent_state, run.evidence)
+        trace = Trace(session, run)
+        run.status = "running"
+        rec.status = "in_review"
+        session.commit()
+
+        llm_session: LLMSession | None = None
+        try:
+            llm_session = self._llm.new_session(SYSTEM_PROMPT, tool_specs(), history=history)
+            self._loop(ctx, trace, llm_session, start(llm_session, ctx, trace))
+        except LLMError as exc:
+            log.warning("Run %s: LLM failed: %s", run.id, exc)
+            session.rollback()
+            trace.note("system", "llm_error", {"error": str(exc)})
+            self._fail(run, f"LLM unavailable: {exc}")
+        except Exception as exc:
+            log.exception("Run %s crashed", run.id)
+            session.rollback()
+            self._fail(run, f"Internal error: {exc}")
+        finally:
+            run.evidence = sorted(ctx.evidence)
+            run.agent_state = ctx.to_state()
+            if llm_session is not None:
+                run.history = llm_session.export_history()
+            if run.status != "awaiting_approval":
+                run.finished_at = _now()
+            rec.status = RECOMMENDATION_STATUS.get(run.status, rec.status)
             session.commit()
-
-            llm_session: LLMSession | None = None
-            try:
-                llm_session = self._llm.new_session(SYSTEM_PROMPT, tool_specs())
-                kickoff = self._kickoff(session, rec)
-                trace.note("system", "kickoff", {"message": kickoff})
-                response = trace.llm_turn(lambda: llm_session.send_message(kickoff), sent=kickoff)
-                self._loop(ctx, trace, llm_session, response)
-            except LLMError as exc:
-                log.warning("Run %s: LLM failed: %s", run_id, exc)
-                session.rollback()
-                trace.note("system", "llm_error", {"error": str(exc)})
-                self._fail(run, f"LLM unavailable: {exc}")
-            except Exception as exc:
-                log.exception("Run %s crashed", run_id)
-                session.rollback()
-                self._fail(run, f"Internal error: {exc}")
-            finally:
-                run.evidence = sorted(ctx.evidence)
-                if llm_session is not None:
-                    run.history = llm_session.export_history()
-                if run.status != "awaiting_approval":
-                    run.finished_at = _now()
-                rec.status = RECOMMENDATION_STATUS.get(run.status, rec.status)
-                session.commit()
-
-    # --- Loop ----------------------------------------------------------------------------
 
     def _loop(
         self, ctx: RunContext, trace: Trace, llm_session: LLMSession, response: LLMResponse
@@ -238,16 +311,12 @@ class AgentRunner:
                 response = trace.llm_turn(lambda: llm_session.send_message(NUDGE), sent=NUDGE)
                 continue
 
-            # finalize_decision runs last, so it sees the results of calls made alongside it.
-            calls = sorted(response.tool_calls, key=lambda c: c.name == "finalize_decision")
-            results = [
-                ToolResult(
-                    call.id, call.name, trace.tool(call, lambda c=call: execute_tool(ctx, c))
-                )
-                for call in calls
-            ]
+            results, held = self._execute_turn(ctx, trace, response.tool_calls)
             ctx.session.commit()
 
+            if held is not None:
+                self._pause(ctx, trace, held, results)
+                return
             if ctx.finalized:
                 self._settle(ctx, trace)
                 return
@@ -259,6 +328,58 @@ class AgentRunner:
                 )
                 return
             response = trace.llm_turn(lambda r=results: llm_session.send_tool_results(r))
+
+    def _execute_turn(
+        self, ctx: RunContext, trace: Trace, tool_calls: list[ToolCall]
+    ) -> tuple[list[ToolResult], tuple[ToolCall, dict] | None]:
+        """Run one turn's calls. Returns the results and the submit held for approval, if any."""
+        # finalize_decision runs last, so it sees the results of calls made alongside it.
+        calls = sorted(tool_calls, key=lambda c: c.name == "finalize_decision")
+        results: list[ToolResult] = []
+        held: tuple[ToolCall, dict] | None = None
+        for call in calls:
+            if call.name == "finalize_decision" and held is not None:
+                deferred = error(
+                    "FINALIZE_DEFERRED",
+                    "A PO from this turn is waiting for human approval. You will receive the "
+                    "approval result first; finalize after that.",
+                )
+                payload = trace.tool(call, lambda d=deferred: d)
+            else:
+                payload = trace.tool(call, lambda c=call: execute_tool(ctx, c))
+            if (
+                held is None
+                and call.name == "submit_purchase_order"
+                and payload.get("ok")
+                and payload["data"].get("outcome") == "PENDING_APPROVAL"
+            ):
+                held = (call, payload)
+            results.append(ToolResult(call.id, call.name, payload))
+        return results, held
+
+    def _pause(
+        self,
+        ctx: RunContext,
+        trace: Trace,
+        held: tuple[ToolCall, dict],
+        results: list[ToolResult],
+    ) -> None:
+        call, payload = held
+        po = payload["data"]["purchase_order"]
+        ctx.run.status = "awaiting_approval"
+        ctx.run.paused_state = {
+            "call_id": call.id,
+            "po_id": po["po_id"],
+            "expectation": call.args.get("expectation"),
+            "results": [
+                {"call_id": r.call_id, "name": r.name, "payload": r.payload} for r in results
+            ],
+        }
+        trace.note(
+            "system",
+            "paused_for_approval",
+            {"po_id": po["po_id"], "reasons": [r["code"] for r in po["approval_reasons"]]},
+        )
 
     def _settle(self, ctx: RunContext, trace: Trace) -> None:
         """Set the run's status from what it left behind."""

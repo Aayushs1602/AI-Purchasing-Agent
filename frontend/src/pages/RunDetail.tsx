@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { ACTIVE_RUN_STATUSES, api, type RecommendationDetail, type RunDetail as Run, type Step } from '../api'
+import { ApprovalPanel } from '../components/ApprovalPanel'
 import { DecisionCard } from '../components/DecisionCard'
+import { Escalations } from '../components/Escalations'
 import { PurchaseOrders } from '../components/PurchaseOrders'
 import { StatusChip } from '../components/StatusChip'
 import { Timeline } from '../components/Timeline'
@@ -12,6 +14,8 @@ export function RunDetail({ id }: { id: string }) {
   const [steps, setSteps] = useState<Step[]>([])
   const [rec, setRec] = useState<RecommendationDetail | null>(null)
   const [error, setError] = useState<string | null>(null)
+  // After a human decides, keep polling until the resumed run moves on.
+  const [resuming, setResuming] = useState(false)
   const lastSeq = useRef(0)
 
   // Fetch the run and only the steps we have not seen yet.
@@ -23,6 +27,7 @@ export function RunDetail({ id }: { id: string }) {
         setSteps((prev) => [...prev, ...next.steps])
       }
       setRun(next)
+      if (next.status !== 'awaiting_approval') setResuming(false)
       setError(null)
     } catch (e) {
       setError((e as Error).message)
@@ -40,7 +45,10 @@ export function RunDetail({ id }: { id: string }) {
     if (run && !rec) api.recommendation(run.recommendation_id).then(setRec, () => {})
   }, [run, rec])
 
-  const working = !run || ACTIVE_RUN_STATUSES.includes(run.status)
+  const working = !run || resuming || ACTIVE_RUN_STATUSES.includes(run.status)
+  const pausedPo = run?.paused_for
+    ? run.purchase_orders.find((po) => po.id === run.paused_for?.po_id)
+    : undefined
   useEffect(() => {
     if (!working) return
     const timer = setInterval(refresh, POLL_MS)
@@ -78,8 +86,20 @@ export function RunDetail({ id }: { id: string }) {
         </section>
 
         <aside className="side">
+          {run && pausedPo && !resuming && (
+            <ApprovalPanel
+              po={pausedPo}
+              reasons={run.paused_for?.reasons ?? []}
+              onDecided={() => {
+                setResuming(true)
+                refresh()
+              }}
+            />
+          )}
+          {resuming && <div className="notice info">Decision sent. The agent is resuming...</div>}
           {run && <DecisionCard run={run} recommended={rec?.quantity ?? 0} />}
           {run && <PurchaseOrders pos={run.purchase_orders} />}
+          {run && <Escalations items={run.escalations} onChanged={refresh} />}
           {rec && (
             <section className="card">
               <header>

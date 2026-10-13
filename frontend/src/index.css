@@ -496,3 +496,36 @@ details pre {
 .supplier-message {
   margin: 8px 0 0;
 }
+
+/* --- Approvals and escalations --- */
+.approval {
+  border-color: var(--warn);
+}
+.approval label,
+.resolve label {
+  display: block;
+  margin: 10px 0 4px;
+  font-size: 12px;
+  color: var(--muted);
+}
+.actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-top: 10px;
+}
+.small {
+  font-size: 12px;
+}
+.escalation + .escalation {
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid var(--line);
+}
+.escalation p {
+  margin: 6px 0;
+}
+.escalation ul {
+  margin: 4px 0;
+  padding-left: 18px;
+}

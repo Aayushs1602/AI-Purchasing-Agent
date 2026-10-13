@@ -122,6 +122,13 @@ class TestSubmit:
         assert sent["supplier_ack"]["confirmed_unit_cost"] == 2.9
         assert [v["code"] for v in sent["validation"]["hard_violations"]] == ["OVER_BUDGET"]
 
+        # What-if now treats a candidate as a replacement for the confirmed PO, not an extra
+        # order on top of it (which would wrongly show no need and no budget).
+        what_if = call(ctx, "evaluate_order_quantity", quantity=740)["data"]
+        assert what_if["evaluated_as"].startswith(f"replacement for {po_id}")
+        assert (what_if["feasible"], what_if["projection"]["net_need"]) == (True, 800)
+        assert what_if["projection"]["order_value"] == 2146.0
+
         amended = call(ctx, "amend_purchase_order", po_id=po_id, quantity=740)["data"]
         assert amended["purchase_order"]["status"] == "draft"
 

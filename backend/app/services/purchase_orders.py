@@ -199,9 +199,7 @@ class PurchaseOrderService:
             self._check_transition(po, "draft", action="amend")
 
         assumptions = assumptions if assumptions is not None else self._assumptions(po)
-        evaluation = self._evaluate(
-            po, quantity, unit_cost=self._list_price(po), assumptions=assumptions
-        )
+        evaluation = self.evaluate_replacement(po, quantity, assumptions=assumptions)
         self._refuse_hard_violations(evaluation, action="amend")
 
         detail = {
@@ -288,6 +286,17 @@ class PurchaseOrderService:
 
     def get(self, po_id: str) -> PurchaseOrder:
         return self._get(po_id)
+
+    def evaluate_replacement(
+        self, po: PurchaseOrder, quantity: int, *, assumptions: Assumptions | None = None
+    ) -> QuantityEvaluation:
+        """Evaluate `quantity` as a new revision of this PO: what an amend would validate."""
+        return self._evaluate(
+            po,
+            quantity,
+            unit_cost=self._list_price(po),
+            assumptions=assumptions if assumptions is not None else self._assumptions(po),
+        )
 
     def revalidate(self, po: PurchaseOrder) -> QuantityEvaluation:
         """Check the PO as it stands now: confirmed quantity and price against current data."""

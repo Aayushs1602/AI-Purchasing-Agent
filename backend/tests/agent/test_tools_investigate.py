@@ -71,6 +71,7 @@ class TestAnalysisTools:
     def test_evaluate_reports_violations_and_limits(self, make_ctx):
         data = call(make_ctx("REC-1002"), "evaluate_order_quantity", quantity=800)["data"]
 
+        assert data["evaluated_as"] == "new order"
         assert data["feasible"] is False
         assert [f["code"] for f in data["hard_violations"]] == ["OVER_STORAGE_CAPACITY"]
         assert data["projection"]["net_need"] == 480

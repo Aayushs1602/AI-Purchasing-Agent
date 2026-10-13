@@ -16,7 +16,15 @@ from app.agent.tools.base import NoArgs, RunContext, Tool, ToolArgs, ToolError, 
 from app.engine import inventory_math as im
 from app.engine.models import Assumptions
 from app.engine.policy import evaluate_quantity, recommendation_findings
-from app.models import Budget, Node, Product, Supplier, SupplierTerm
+from app.models import (
+    LIVE_PO_STATUSES,
+    Budget,
+    Node,
+    Product,
+    PurchaseOrder,
+    Supplier,
+    SupplierTerm,
+)
 from app.services.context import open_purchase_orders, recommendation_inputs
 
 
@@ -230,15 +238,29 @@ def assumptions_for(ctx: RunContext, exclude_po_ids: list[str], demand_basis: st
 
 
 def evaluate_order_quantity(ctx: RunContext, args: EvaluateArgs) -> dict:
-    pc = ctx.purchasing_context()
-    evaluation = evaluate_quantity(
-        pc,
-        args.quantity,
-        assumptions=assumptions_for(ctx, args.exclude_po_ids, args.demand_basis),
-        recommended_qty=ctx.recommendation.quantity,
-        config=ctx.policy,
+    assumptions = assumptions_for(ctx, args.exclude_po_ids, args.demand_basis)
+    # Once the run has its own PO, a candidate quantity means "change that PO to this",
+    # not "order this on top of it": evaluate it exactly as an amend would be validated.
+    own_po = ctx.session.scalar(
+        select(PurchaseOrder).where(
+            PurchaseOrder.run_id == ctx.run.id, PurchaseOrder.status.in_(LIVE_PO_STATUSES)
+        )
     )
-    return evaluation.model_dump(mode="json")
+    if own_po is not None:
+        evaluation = ctx.po_service.evaluate_replacement(
+            own_po, args.quantity, assumptions=assumptions
+        )
+        evaluated_as = f"replacement for {own_po.id} (this run's {own_po.status} PO)"
+    else:
+        evaluation = evaluate_quantity(
+            ctx.purchasing_context(),
+            args.quantity,
+            assumptions=assumptions,
+            recommended_qty=ctx.recommendation.quantity,
+            config=ctx.policy,
+        )
+        evaluated_as = "new order"
+    return {"evaluated_as": evaluated_as, **evaluation.model_dump(mode="json")}
 
 
 INVESTIGATION_TOOLS = [
@@ -319,7 +341,8 @@ INVESTIGATION_TOOLS = [
         "evaluate_order_quantity",
         "Project stock for a candidate quantity and check it against every constraint: "
         "need, cover days, budget, storage, MOQ, case pack, approval rules. Use it for every "
-        "number you rely on; never compute these yourself.",
+        "number you rely on; never compute these yourself. Once this run has its own PO, the "
+        "candidate is evaluated as a replacement for that PO (exactly what an amend would be).",
         EvaluateArgs,
         evaluate_order_quantity,
         "analysis",

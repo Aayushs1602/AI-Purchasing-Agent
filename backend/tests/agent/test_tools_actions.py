@@ -1,7 +1,7 @@
 from app.agent.llm.base import ToolCall
 from app.agent.tools import execute_tool
 from app.models import AgentRun, Escalation, PurchaseOrder
-from tests.agent.conftest import call, gather_evidence
+from tests.agent.conftest import call, create, expect, gather_evidence, submit
 
 FACTORS = [{"factor": "net_need", "value": 800, "impact": "need matches the recommendation"}]
 
@@ -18,12 +18,16 @@ def finalize_args(**overrides):
     return args
 
 
+def po_id_of(result):
+    return result["data"]["purchase_order"]["po_id"]
+
+
 class TestEvidenceGate:
     def test_actions_are_refused_until_evidence_is_gathered(self, make_ctx):
         ctx = make_ctx()
         call(ctx, "get_inventory")
 
-        result = call(ctx, "create_purchase_order", quantity=800)
+        result = create(ctx, 800)
 
         assert result["error"]["code"] == "EVIDENCE_MISSING"
         assert "budget" in result["error"]["details"]["missing"]
@@ -40,30 +44,49 @@ class TestCreate:
         ctx = make_ctx()
         gather_evidence(ctx)
 
-        data = call(ctx, "create_purchase_order", quantity=800)["data"]
+        data = create(ctx, 800)["data"]
 
         assert data["purchase_order"]["status"] == "draft"
         assert data["validation"]["feasible"] is True
+        assert data["outcome_check"]["status"] == "AS_EXPECTED"
         assert ctx.session.get(PurchaseOrder, "PO-5001").run_id == ctx.run.id
+
+    def test_expectation_is_required(self, make_ctx):
+        ctx = make_ctx()
+        gather_evidence(ctx)
+
+        result = call(ctx, "create_purchase_order", quantity=800)
+
+        assert result["error"]["code"] == "INVALID_ARGUMENTS"
+        assert result["error"]["details"]["errors"][0]["field"] == "expectation"
+
+    def test_wrong_expectation_is_reported_on_the_draft(self, make_ctx):
+        ctx = make_ctx()
+        gather_evidence(ctx)
+
+        check = create(ctx, 800, cost=1500)["data"]["outcome_check"]
+
+        assert check["status"] == "UNEXPECTED_OUTCOME"
+        assert [d["field"] for d in check["differences"]] == ["total_cost"]
 
     def test_replayed_call_does_not_duplicate_the_po(self, make_ctx):
         ctx = make_ctx()
         gather_evidence(ctx)
-        same_call = ToolCall(id="call-7", name="create_purchase_order", args={"quantity": 800})
+        args = {"quantity": 800, "expectation": expect(800, 2000)}
+        same_call = ToolCall(id="call-7", name="create_purchase_order", args=args)
 
         first = execute_tool(ctx, same_call)
         second = execute_tool(ctx, same_call)
 
-        assert first["data"]["purchase_order"]["po_id"] == second["data"]["purchase_order"]["po_id"]
+        assert po_id_of(first) == po_id_of(second)
 
     def test_second_po_for_the_recommendation_is_refused(self, make_ctx):
         ctx = make_ctx()
         gather_evidence(ctx)
-        call(ctx, "create_purchase_order", quantity=800)
+        create(ctx, 800)
 
-        result = execute_tool(
-            ctx, ToolCall(id="another", name="create_purchase_order", args={"quantity": 600})
-        )
+        args = {"quantity": 600, "expectation": expect(600, 1500)}
+        result = execute_tool(ctx, ToolCall(id="another", name="create_purchase_order", args=args))
 
         assert result["error"]["code"] == "LIVE_PO_EXISTS"
 
@@ -71,7 +94,7 @@ class TestCreate:
         ctx = make_ctx("REC-1002")
         gather_evidence(ctx)
 
-        result = call(ctx, "create_purchase_order", quantity=800)
+        result = create(ctx, 800)
 
         assert result["error"]["code"] == "HARD_CONSTRAINT_VIOLATED"
         details = result["error"]["details"]
@@ -82,45 +105,54 @@ class TestCreate:
         ctx = make_ctx("REC-1003")
         gather_evidence(ctx)
 
-        data = call(ctx, "create_purchase_order", quantity=800, exclude_po_ids=["PO-2042"])["data"]
+        data = create(ctx, 800, exclude_po_ids=["PO-2042"])["data"]
 
         assert data["purchase_order"]["assumptions"]["exclude_po_ids"] == ["PO-2042"]
         assert data["validation"]["requires_approval"] is True
 
 
 class TestSubmit:
-    def test_within_policy_goes_to_the_supplier(self, make_ctx):
+    def test_within_policy_goes_to_the_supplier_as_expected(self, make_ctx):
         ctx = make_ctx()
         gather_evidence(ctx)
-        po_id = call(ctx, "create_purchase_order", quantity=800)["data"]["purchase_order"]["po_id"]
+        po_id = po_id_of(create(ctx, 800))
 
-        data = call(ctx, "submit_purchase_order", po_id=po_id, confidence=0.9)["data"]
+        data = submit(ctx, po_id, 800, 2000)["data"]
 
         assert data["outcome"] == "SENT_TO_SUPPLIER"
         assert data["purchase_order"]["status"] == "confirmed"
         assert data["supplier_ack"]["confirmed_quantity"] == 800
         assert "untrusted_text" in data["supplier_ack"]["message"]
+        assert data["outcome_check"] == {
+            "status": "AS_EXPECTED",
+            "differences": [],
+            "constraint_violations": [],
+            "next_actions": [],
+        }
 
     def test_high_value_waits_for_a_human(self, make_ctx):
         ctx = make_ctx("REC-1012")
         gather_evidence(ctx)
-        po_id = call(ctx, "create_purchase_order", quantity=800)["data"]["purchase_order"]["po_id"]
+        po_id = po_id_of(create(ctx, 800, cost=3600))
 
-        data = call(ctx, "submit_purchase_order", po_id=po_id, confidence=0.9)["data"]
+        data = submit(ctx, po_id, 800, 3600)["data"]
 
         assert data["outcome"] == "PENDING_APPROVAL"
         assert [r["code"] for r in data["purchase_order"]["approval_reasons"]] == [
             "VALUE_ABOVE_AUTO_APPROVE_LIMIT"
         ]
 
-    def test_price_increase_shows_up_in_the_revalidation_and_can_be_fixed(self, make_ctx):
+    def test_price_increase_is_an_unexpected_outcome_that_can_be_fixed(self, make_ctx):
         ctx = make_ctx("REC-1010")
         gather_evidence(ctx)
-        po_id = call(ctx, "create_purchase_order", quantity=800)["data"]["purchase_order"]["po_id"]
+        po_id = po_id_of(create(ctx, 800))
 
-        sent = call(ctx, "submit_purchase_order", po_id=po_id, confidence=0.9)["data"]
-        assert sent["supplier_ack"]["confirmed_unit_cost"] == 2.9
-        assert [v["code"] for v in sent["validation"]["hard_violations"]] == ["OVER_BUDGET"]
+        sent = submit(ctx, po_id, 800, 2000)["data"]
+        check = sent["outcome_check"]
+        assert check["status"] == "UNEXPECTED_OUTCOME"
+        assert [d["field"] for d in check["differences"]] == ["unit_cost", "total_cost"]
+        assert check["constraint_violations"] == ["OVER_BUDGET"]
+        assert not any("accept the deviation" in a for a in check["next_actions"])
 
         # What-if now treats a candidate as a replacement for the confirmed PO, not an extra
         # order on top of it (which would wrongly show no need and no budget).
@@ -129,12 +161,32 @@ class TestSubmit:
         assert (what_if["feasible"], what_if["projection"]["net_need"]) == (True, 800)
         assert what_if["projection"]["order_value"] == 2146.0
 
-        amended = call(ctx, "amend_purchase_order", po_id=po_id, quantity=740)["data"]
+        amended = call(
+            ctx, "amend_purchase_order", po_id=po_id, quantity=740, expectation=expect(740, 2146)
+        )["data"]
         assert amended["purchase_order"]["status"] == "draft"
+        assert amended["outcome_check"]["status"] == "AS_EXPECTED"
 
-        resent = call(ctx, "submit_purchase_order", po_id=po_id, confidence=0.8)["data"]
+        resent = submit(ctx, po_id, 740, 2146)["data"]
         assert resent["purchase_order"]["status"] == "confirmed"
-        assert resent["validation"]["feasible"] is True
+        assert resent["outcome_check"]["status"] == "AS_EXPECTED"
+
+    def test_partial_fill_is_an_unexpected_quantity(self, make_ctx):
+        ctx = make_ctx("REC-1011")
+        gather_evidence(ctx)
+        po_id = po_id_of(create(ctx, 800))
+
+        check = submit(ctx, po_id, 800, 2000)["data"]["outcome_check"]
+
+        assert check["status"] == "UNEXPECTED_OUTCOME"
+        assert check["differences"][0] == {
+            "field": "quantity",
+            "expected": 800,
+            "actual": 500,
+            "message": "PO has 500 units, expected 800.",
+        }
+        assert check["constraint_violations"] == []
+        assert "accept the deviation and explain it in finalize_decision" in check["next_actions"]
 
 
 class TestOwnership:
@@ -143,7 +195,9 @@ class TestOwnership:
         gather_evidence(ctx)
 
         cancel = call(ctx, "cancel_purchase_order", po_id="PO-2041", reason="free up space")
-        amend = call(ctx, "amend_purchase_order", po_id="PO-2041", quantity=100)
+        amend = call(
+            ctx, "amend_purchase_order", po_id="PO-2041", quantity=100, expectation=expect(100, 250)
+        )
 
         assert cancel["error"]["code"] == amend["error"]["code"] == "PERMISSION_DENIED"
         assert ctx.session.get(PurchaseOrder, "PO-2041").status == "confirmed"
@@ -151,7 +205,7 @@ class TestOwnership:
     def test_own_po_can_be_cancelled(self, make_ctx):
         ctx = make_ctx()
         gather_evidence(ctx)
-        po_id = call(ctx, "create_purchase_order", quantity=800)["data"]["purchase_order"]["po_id"]
+        po_id = po_id_of(create(ctx, 800))
 
         data = call(ctx, "cancel_purchase_order", po_id=po_id, reason="changed my mind")["data"]
 
@@ -179,6 +233,7 @@ class TestEscalateAndFinalize:
     def test_finalize_records_the_decision_once(self, make_ctx):
         ctx = make_ctx()
         gather_evidence(ctx)
+        submit(ctx, po_id_of(create(ctx, 800)), 800, 2000)
 
         assert call(ctx, "finalize_decision", **finalize_args())["data"]["recorded"]
         again = call(ctx, "finalize_decision", **finalize_args())

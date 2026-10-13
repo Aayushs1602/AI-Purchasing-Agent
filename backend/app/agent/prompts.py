@@ -32,12 +32,16 @@ How to work
      no feasible order exists. Call escalate_to_human with specific questions and the options
      you see. Do not place an order you cannot justify.
 4. Act. For accept or modify: create_purchase_order, check its validation, then
-   submit_purchase_order with your honest confidence.
-5. Verify. Read every result. The supplier may confirm something different from what you
-   sent (price, quantity); the submit result re-validates the PO as confirmed. If the PO now
-   breaks a hard constraint, fix it (amend_purchase_order, then submit again) or cancel it and
-   escalate. If the supplier delivers less than needed, keep what is useful and escalate the
-   gap. Never finish with a PO that breaks a hard constraint.
+   submit_purchase_order with your honest confidence. With every create, amend and submit,
+   state your `expectation`: the quantity you expect on the PO and the most it should cost
+   (optionally the latest arrival date and an acceptable range of cover days).
+5. Verify. Every PO action returns `outcome_check`, comparing what actually happened with
+   your expectation, and the submit result re-validates the PO as the supplier confirmed it.
+   On UNEXPECTED_OUTCOME, react with one of the listed next actions: fix the PO
+   (amend_purchase_order, then submit again), cancel it, escalate, or, only if no constraint
+   is violated, accept the deviation and explain it. If the supplier delivers less than
+   needed, keep what is useful and escalate the gap. Never finish with a PO that breaks a
+   hard constraint.
 6. Finish by calling finalize_decision exactly once. final_quantity is the quantity of the PO
    you leave in place (the supplier-confirmed quantity if it changed), or 0 if none.
 

@@ -32,11 +32,29 @@ def created_po_id(results):
     )
 
 
-def submit(confidence=0.9):
+def expectation(quantity, cost):
+    return {"quantity": quantity, "max_total_cost": cost}
+
+
+def create_po(quantity, cost=None):
+    cost = cost if cost is not None else quantity * 2.5
+    return [
+        {
+            "name": "create_purchase_order",
+            "args": {"quantity": quantity, "expectation": expectation(quantity, cost)},
+        }
+    ]
+
+
+def submit(quantity, cost, confidence=0.9):
     return lambda results: [
         {
             "name": "submit_purchase_order",
-            "args": {"po_id": created_po_id(results), "confidence": confidence},
+            "args": {
+                "po_id": created_po_id(results),
+                "confidence": confidence,
+                "expectation": expectation(quantity, cost),
+            },
         }
     ]
 
@@ -88,8 +106,8 @@ class TestHappyPaths:
             [
                 READS,
                 [{"name": "evaluate_order_quantity", "args": {"quantity": 800}}],
-                [{"name": "create_purchase_order", "args": {"quantity": 800}}],
-                submit(),
+                create_po(800),
+                submit(800, 2000),
                 finalize("accept", 800),
             ],
         )
@@ -111,8 +129,8 @@ class TestHappyPaths:
                     {"name": "evaluate_order_quantity", "args": {"quantity": 800}},
                     {"name": "evaluate_order_quantity", "args": {"quantity": 480}},
                 ],
-                [{"name": "create_purchase_order", "args": {"quantity": 480}}],
-                submit(),
+                create_po(480),
+                submit(480, 1200),
                 finalize("modify", 480, factor="open_pos", value=320),
             ],
         )
@@ -149,8 +167,8 @@ class TestHappyPaths:
             "REC-1012",
             [
                 READS,
-                [{"name": "create_purchase_order", "args": {"quantity": 800}}],
-                submit(),
+                create_po(800, 3600),
+                submit(800, 3600),
                 finalize("accept", 800, factor="order_value", value=3600),
             ],
         )
@@ -175,10 +193,10 @@ class TestGuardrails:
         session, run, client = run_agent(
             "REC-1001",
             [
-                [{"name": "create_purchase_order", "args": {"quantity": 800}}],
+                create_po(800),
                 READS,
-                [{"name": "create_purchase_order", "args": {"quantity": 800}}],
-                submit(),
+                create_po(800),
+                submit(800, 2000),
                 finalize("accept", 800),
             ],
         )

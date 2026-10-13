@@ -65,3 +65,23 @@ def gather_evidence(ctx: RunContext) -> None:
         "get_budget",
     ):
         assert call(ctx, name)["ok"], name
+
+
+def expect(quantity: int, max_total_cost: float, **extra) -> dict:
+    """An `expectation` argument for PO tools."""
+    return {"quantity": quantity, "max_total_cost": max_total_cost, **extra}
+
+
+def create(ctx: RunContext, quantity: int, cost: float | None = None, **args) -> dict:
+    expectation = expect(quantity, cost if cost is not None else quantity * 2.5)
+    return call(ctx, "create_purchase_order", quantity=quantity, expectation=expectation, **args)
+
+
+def submit(ctx: RunContext, po_id: str, quantity: int, cost: float, confidence=0.9) -> dict:
+    return call(
+        ctx,
+        "submit_purchase_order",
+        po_id=po_id,
+        confidence=confidence,
+        expectation=expect(quantity, cost),
+    )

@@ -15,6 +15,7 @@ from typing import Any, Literal
 from pydantic import Field
 from sqlalchemy import func, select
 
+from app.agent.checks import ActionExpectation, check_outcome
 from app.agent.tools.base import RunContext, Tool, ToolArgs, ToolError, untrusted
 from app.agent.tools.investigate import assumptions_for
 from app.engine.models import Assumptions, Decision, Factor
@@ -110,6 +111,7 @@ class CreatePOArgs(ToolArgs):
     )
     demand_basis: Literal["forecast", "recent_actuals"] = "forecast"
     note: str | None = Field(None, max_length=300, description="Short note for the buyer")
+    expectation: ActionExpectation = Field(description="What you expect the draft to look like")
 
 
 def create_purchase_order(ctx: RunContext, args: CreatePOArgs) -> dict:
@@ -129,6 +131,9 @@ def create_purchase_order(ctx: RunContext, args: CreatePOArgs) -> dict:
     )
     return po_result(
         result,
+        outcome_check=check_outcome(
+            args.expectation, result.po, result.evaluation, sent=False
+        ).model_dump(),
         next_step="Check the validation, then submit_purchase_order, or amend/cancel it.",
     )
 
@@ -140,6 +145,7 @@ class AmendPOArgs(ToolArgs):
         None, description="Replace the excluded POs; omit to keep the current assumptions"
     )
     demand_basis: Literal["forecast", "recent_actuals"] | None = None
+    expectation: ActionExpectation = Field(description="What you expect the new revision to be")
 
 
 def amend_purchase_order(ctx: RunContext, args: AmendPOArgs) -> dict:
@@ -156,7 +162,13 @@ def amend_purchase_order(ctx: RunContext, args: AmendPOArgs) -> dict:
     result = ctx.po_service.amend(
         po.id, quantity=args.quantity, actor=ctx.actor, assumptions=assumptions
     )
-    return po_result(result, next_step="The amended PO is a draft again: submit it to send it.")
+    return po_result(
+        result,
+        outcome_check=check_outcome(
+            args.expectation, result.po, result.evaluation, sent=False
+        ).model_dump(),
+        next_step="The amended PO is a draft again: submit it to send it.",
+    )
 
 
 class CancelPOArgs(ToolArgs):
@@ -172,6 +184,7 @@ def cancel_purchase_order(ctx: RunContext, args: CancelPOArgs) -> dict:
 class SubmitPOArgs(ToolArgs):
     po_id: str
     confidence: float = Field(ge=0, le=1, description="Your confidence that this PO is right (0-1)")
+    expectation: ActionExpectation = Field(description="What you expect the supplier to confirm")
 
 
 def submit_purchase_order(ctx: RunContext, args: SubmitPOArgs) -> dict:
@@ -183,6 +196,9 @@ def submit_purchase_order(ctx: RunContext, args: SubmitPOArgs) -> dict:
         return po_result(
             result,
             outcome="PENDING_APPROVAL",
+            outcome_check=check_outcome(
+                args.expectation, result.po, result.evaluation, sent=False
+            ).model_dump(),
             explanation="Policy requires a human to approve this PO before it is sent.",
         )
 
@@ -190,6 +206,9 @@ def submit_purchase_order(ctx: RunContext, args: SubmitPOArgs) -> dict:
     return po_result(
         result,
         outcome="SENT_TO_SUPPLIER",
+        outcome_check=check_outcome(
+            args.expectation, result.po, result.evaluation, sent=True
+        ).model_dump(),
         supplier_ack={
             "status": ack.status,
             "confirmed_quantity": ack.confirmed_quantity,
@@ -197,7 +216,10 @@ def submit_purchase_order(ctx: RunContext, args: SubmitPOArgs) -> dict:
             "eta": ack.eta.isoformat(),
             "message": untrusted(ack.message, "supplier order system"),
         },
-        explanation="'validation' re-checks the PO as the supplier confirmed it.",
+        explanation=(
+            "'validation' re-checks the PO as the supplier confirmed it; 'outcome_check' compares "
+            "it with your expectation."
+        ),
     )
 
 

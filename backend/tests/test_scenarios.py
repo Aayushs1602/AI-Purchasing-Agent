@@ -5,17 +5,20 @@ import pytest
 from sqlalchemy import func, select
 
 from app.config import get_settings
+from app.db import make_engine, make_session_factory
 from app.models import (
+    SCHEMA_VERSION,
     Budget,
     DemandForecast,
     PurchaseOrder,
     Recommendation,
     SalesRecord,
+    SchemaInfo,
     Supplier,
     SupplierTerm,
 )
 from app.scenarios import deep_merge, load_scenarios
-from app.seed import seed_scenarios
+from app.seed import ensure_database, seed_scenarios, stored_schema_version
 
 SCENARIOS_DIR = get_settings().scenarios_dir
 TODAY = get_settings().sim_today
@@ -108,3 +111,42 @@ class TestSeeding:
         terms = seeded.scalar(select(SupplierTerm).where(SupplierTerm.sku == "SKU-1010"))
 
         assert terms.mock_ack == {"behaviour": "price_increase", "new_unit_cost": 2.9}
+
+
+class TestSchemaVersion:
+    @pytest.fixture
+    def fresh_engine(self, tmp_path):
+        engine = make_engine(f"sqlite:///{(tmp_path / 'versioned.db').as_posix()}")
+        yield engine
+        engine.dispose()
+
+    def test_first_start_seeds_and_stamps_the_version(self, fresh_engine):
+        ensure_database(fresh_engine, SCENARIOS_DIR, TODAY)
+
+        assert stored_schema_version(fresh_engine) == SCHEMA_VERSION
+        with make_session_factory(fresh_engine)() as session:
+            assert session.scalar(select(func.count()).select_from(Recommendation)) == 13
+
+    def test_matching_version_keeps_existing_data(self, fresh_engine):
+        ensure_database(fresh_engine, SCENARIOS_DIR, TODAY)
+        with make_session_factory(fresh_engine)() as session:
+            session.get(Recommendation, "REC-1001").status = "decided"
+            session.commit()
+
+        ensure_database(fresh_engine, SCENARIOS_DIR, TODAY)
+
+        with make_session_factory(fresh_engine)() as session:
+            assert session.get(Recommendation, "REC-1001").status == "decided"
+
+    def test_outdated_or_unstamped_database_is_rebuilt(self, fresh_engine):
+        ensure_database(fresh_engine, SCENARIOS_DIR, TODAY)
+        with make_session_factory(fresh_engine)() as session:
+            session.get(Recommendation, "REC-1001").status = "decided"
+            session.get(SchemaInfo, SCHEMA_VERSION).version = SCHEMA_VERSION - 1
+            session.commit()
+
+        ensure_database(fresh_engine, SCENARIOS_DIR, TODAY)
+
+        assert stored_schema_version(fresh_engine) == SCHEMA_VERSION
+        with make_session_factory(fresh_engine)() as session:
+            assert session.get(Recommendation, "REC-1001").status == "open"

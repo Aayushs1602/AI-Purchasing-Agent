@@ -18,6 +18,17 @@ class Base(DeclarativeBase):
     pass
 
 
+# Bump whenever a table or column changes. On startup a database stamped with another
+# version is rebuilt from the scenarios (demo data only; production would use migrations).
+SCHEMA_VERSION = 2
+
+
+class SchemaInfo(Base):
+    __tablename__ = "schema_info"
+
+    version: Mapped[int] = mapped_column(Integer, primary_key=True)
+
+
 class Node(Base):
     """A fulfillment node (dark store / warehouse)."""
 

@@ -9,12 +9,13 @@ import logging
 from datetime import date, timedelta
 from pathlib import Path
 
-from sqlalchemy import Engine, func, select
+from sqlalchemy import Engine, inspect, select
 from sqlalchemy.orm import Session
 
 from app.config import get_settings
 from app.db import create_schema, drop_schema, make_engine, make_session_factory
 from app.models import (
+    SCHEMA_VERSION,
     Budget,
     DemandForecast,
     InventoryRecord,
@@ -23,6 +24,7 @@ from app.models import (
     PurchaseOrder,
     Recommendation,
     SalesRecord,
+    SchemaInfo,
     Supplier,
     SupplierTerm,
 )
@@ -160,17 +162,31 @@ def reset_database(engine: Engine, scenarios_dir: Path, today: date) -> int:
     create_schema(engine)
     with make_session_factory(engine)() as session:
         seed_scenarios(session, scenarios, today)
+        session.add(SchemaInfo(version=SCHEMA_VERSION))
+        session.commit()
     log.info("Seeded %d scenarios", len(scenarios))
     return len(scenarios)
 
 
-def ensure_database(engine: Engine, scenarios_dir: Path, today: date) -> None:
-    """Create tables and seed them on first start; leave existing data alone."""
-    create_schema(engine)
+def stored_schema_version(engine: Engine) -> int | None:
+    if not inspect(engine).has_table(SchemaInfo.__tablename__):
+        return None
     with make_session_factory(engine)() as session:
-        has_data = session.scalar(select(func.count()).select_from(Recommendation))
-    if not has_data:
-        reset_database(engine, scenarios_dir, today)
+        return session.scalar(select(SchemaInfo.version))
+
+
+def ensure_database(engine: Engine, scenarios_dir: Path, today: date) -> None:
+    """Seed on first start, rebuild if the schema changed, otherwise keep existing data."""
+    stored = stored_schema_version(engine)
+    if stored == SCHEMA_VERSION:
+        return
+    if stored is not None or inspect(engine).get_table_names():
+        log.warning(
+            "Database schema version %s does not match %s; rebuilding demo data",
+            stored,
+            SCHEMA_VERSION,
+        )
+    reset_database(engine, scenarios_dir, today)
 
 
 if __name__ == "__main__":

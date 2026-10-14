@@ -15,6 +15,7 @@ from app.models import (
     AgentRun,
     AgentStep,
     Budget,
+    CustomScenario,
     DemandForecast,
     Escalation,
     InventoryRecord,
@@ -89,6 +90,18 @@ class EscalationAdmin(ReadOnlyView, model=Escalation):
         Escalation.resolution,
     ]
     column_searchable_list = [Escalation.recommendation_id, Escalation.run_id]
+
+
+class CustomScenarioAdmin(ReadOnlyView, model=CustomScenario):
+    icon = "fa-solid fa-pen-ruler"
+    column_list = [
+        CustomScenario.number,
+        CustomScenario.recommendation_id,
+        CustomScenario.preset,
+        CustomScenario.reviewer_call,
+        CustomScenario.created_at,
+    ]
+    column_default_sort = [(CustomScenario.number, True)]
 
 
 class RecommendationAdmin(ReadOnlyView, model=Recommendation):
@@ -242,6 +255,7 @@ VIEWS = [
     AgentStepAdmin,
     EscalationAdmin,
     RecommendationAdmin,
+    CustomScenarioAdmin,
     PurchaseOrderAdmin,
     PurchaseOrderEventAdmin,
     InventoryAdmin,

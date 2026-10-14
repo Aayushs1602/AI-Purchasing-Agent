@@ -3,6 +3,7 @@
 import logging
 from concurrent.futures import ThreadPoolExecutor
 from contextlib import asynccontextmanager
+from typing import Any
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -66,6 +67,7 @@ def create_app(
         except LLMConfigError as exc:
             app.state.llm_error = str(exc)
             log.warning("Agent runs disabled: %s", exc)
+    app.state.llm = llm
     app.state.runner = (
         AgentRunner(
             app.state.session_factory,
@@ -86,12 +88,15 @@ def create_app(
     )
 
     @app.get("/api/health", tags=["meta"])
-    def health() -> dict[str, str | None]:
+    def health() -> dict[str, Any]:
         return {
             "status": "ok",
             "env": settings.app_env,
             "agent": "ready" if app.state.runner else "disabled",
             "agent_error": app.state.llm_error,
+            # "replay" can only play back the recorded demo scenarios, not custom ones.
+            "llm_provider": app.state.llm.provider if app.state.llm else None,
+            "custom_scenarios": settings.allow_custom_scenarios,
         }
 
     app.include_router(recommendations.router)

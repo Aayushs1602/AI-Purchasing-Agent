@@ -5,17 +5,25 @@ from __future__ import annotations
 from datetime import date
 from typing import Annotated, Any
 
-from fastapi import APIRouter, Body, Depends
-from pydantic import BaseModel
+from fastapi import APIRouter, Body, Depends, HTTPException, Request
+from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_app_settings, get_session
+from app.api.runs import launch_run
 from app.config import Settings
-from app.custom_scenarios import Preset, presets
-from app.models import Supplier
+from app.custom_scenarios import CustomScenarioInput, Preset, ReviewerCall, presets
+from app.models import CustomScenario, Recommendation, Supplier
 from app.scenarios import NodeSpec, load_baseline_world
-from app.services.custom_scenarios import InputProblems, Problem, ScenarioPreview, parse_input
+from app.services.custom_scenarios import (
+    CustomScenarioConflict,
+    InputProblems,
+    Problem,
+    ScenarioPreview,
+    create,
+    parse_input,
+)
 from app.services.custom_scenarios import preview as preview_scenario
 
 router = APIRouter(prefix="/api/custom-scenarios", tags=["custom scenarios"])
@@ -44,6 +52,31 @@ class PreviewResponse(BaseModel):
     preview: ScenarioPreview | None
 
 
+class CreateRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    input: dict[str, Any]
+    # What the person expects; stored apart from the scenario, never shown to the agent.
+    reviewer_call: ReviewerCall | None = None
+    title: str | None = Field(None, min_length=2, max_length=120)  # inbox label only
+    preset: str | None = Field(None, max_length=64)
+    run: bool = True  # start the agent straight away
+
+
+class Created(BaseModel):
+    recommendation_id: str
+    run_id: str | None
+
+
+class StoredScenario(BaseModel):
+    recommendation_id: str
+    number: int
+    title: str
+    preset: str | None
+    input: CustomScenarioInput
+    reviewer_call: ReviewerCall | None
+
+
 def store_node(settings: Settings) -> NodeSpec:
     """Custom scenarios live at the demo's dark store."""
     return load_baseline_world(settings.scenarios_dir).node
@@ -70,3 +103,57 @@ def preview(data: Annotated[dict[str, Any], Body()], session: SessionDep, settin
     except InputProblems as exc:
         return PreviewResponse(problems=exc.problems, preview=None)
     return PreviewResponse(problems=[], preview=result)
+
+
+@router.post("", status_code=201, response_model=Created)
+def create_scenario(
+    body: CreateRequest, request: Request, session: SessionDep, settings: SettingsDep
+):
+    if not settings.allow_custom_scenarios:
+        raise HTTPException(403, "Custom scenarios are disabled in this environment")
+    runner = None
+    if body.run:
+        # Check before creating anything, so a refused run leaves nothing half done.
+        runner = request.app.state.runner
+        if runner is None:
+            raise HTTPException(503, f"Agent runs are disabled: {request.app.state.llm_error}")
+        if request.app.state.llm.provider == "replay":
+            raise HTTPException(
+                409,
+                "Custom scenarios need a live model: replay mode can only play back the "
+                "recorded demo scenarios. Create it without running, or set LLM_PROVIDER=gemini.",
+            )
+    try:
+        row = create(
+            session,
+            parse_input(body.input),
+            reviewer_call=body.reviewer_call,
+            title=body.title,
+            preset=body.preset,
+            node=store_node(settings),
+            today=settings.sim_today,
+            max_count=settings.max_custom_scenarios,
+        )
+    except InputProblems as exc:
+        raise HTTPException(422, f"Fix the form first: {exc}") from exc
+    except CustomScenarioConflict as exc:
+        raise HTTPException(409, str(exc)) from exc
+
+    run_id = launch_run(request, runner, row.recommendation_id) if runner else None
+    return Created(recommendation_id=row.recommendation_id, run_id=run_id)
+
+
+@router.get("/{recommendation_id}", response_model=StoredScenario)
+def get_scenario(recommendation_id: str, session: SessionDep):
+    """A custom scenario's form, to duplicate it as a new one."""
+    row = session.get(CustomScenario, recommendation_id)
+    if row is None:
+        raise HTTPException(404, f"{recommendation_id} is not a custom scenario")
+    return StoredScenario(
+        recommendation_id=row.recommendation_id,
+        number=row.number,
+        title=session.get(Recommendation, recommendation_id).title,
+        preset=row.preset,
+        input=CustomScenarioInput.model_validate(row.input),
+        reviewer_call=row.reviewer_call,
+    )

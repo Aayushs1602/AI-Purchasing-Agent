@@ -32,6 +32,9 @@ class Settings(BaseSettings):
     allow_demo_reset: bool = True
     # Read-only database browser at /admin. It has no login, so keep it off outside local dev.
     admin_ui_enabled: bool = True
+    # Lets people build their own scenarios in the UI and run the agent on them.
+    allow_custom_scenarios: bool = True
+    max_custom_scenarios: int = 20
 
     # --- LLM ---
     # "replay" plays back recorded runs from recordings_dir: no API key needed.

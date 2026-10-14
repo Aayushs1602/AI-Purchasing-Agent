@@ -45,6 +45,7 @@ class RecommendationSummary(BaseModel):
     latest_run: RunSummary | None = None
     # A PO still in play for this recommendation; while it exists, no new run can start.
     live_po: PurchaseOrderOut | None = None
+    custom: bool = False  # built in the scenario builder rather than a demo scenario
 
 
 class RecommendationDetail(RecommendationSummary):
@@ -141,6 +142,18 @@ class PausedFor(BaseModel):
     reasons: list[dict[str, Any]]
 
 
+class ReviewerVerdict(BaseModel):
+    """The answer the person expected before the run, next to what the agent decided."""
+
+    decision: str
+    quantity_min: int | None
+    quantity_max: int | None
+    note: str | None
+    decision_match: bool | None  # None until the agent has decided
+    quantity_match: bool | None  # None without a range or a decision
+    agrees: bool | None
+
+
 class RunDetail(RunSummary):
     rationale: str | None
     key_factors: list[dict[str, Any]] | None
@@ -153,6 +166,7 @@ class RunDetail(RunSummary):
     purchase_orders: list[PurchaseOrderOut]
     escalations: list[EscalationOut]
     steps: list[StepOut]
+    reviewer_call: ReviewerVerdict | None = None
 
 
 class RunStarted(BaseModel):

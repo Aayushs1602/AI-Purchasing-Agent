@@ -12,6 +12,7 @@ from app.engine.policy import evaluate_quantity, recommendation_findings
 from app.models import (
     LIVE_PO_STATUSES,
     AgentRun,
+    CustomScenario,
     Product,
     PurchaseOrder,
     Recommendation,
@@ -67,6 +68,7 @@ def _summary_fields(session: Session, rec: Recommendation) -> dict:
         "status": rec.status,
         "latest_run": RunSummary.model_validate(latest) if latest else None,
         "live_po": PurchaseOrderOut.model_validate(live_po) if live_po else None,
+        "custom": session.get(CustomScenario, rec.id) is not None,
     }
 
 

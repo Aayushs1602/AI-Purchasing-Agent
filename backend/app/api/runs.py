@@ -13,7 +13,7 @@ from sqlalchemy.orm import Session
 from app.agent.orchestrator import AgentRunner, RunConflictError
 from app.api.deps import get_session
 from app.background import run_in_background
-from app.models import AgentRun, AgentStep, Escalation, PurchaseOrder
+from app.models import AgentRun, AgentStep, CustomScenario, Escalation, PurchaseOrder
 from app.schemas import (
     EscalationOut,
     PausedFor,
@@ -23,6 +23,7 @@ from app.schemas import (
     RunSummary,
     StepOut,
 )
+from app.services.custom_scenarios import reviewer_verdict
 
 router = APIRouter(tags=["agent runs"])
 
@@ -43,6 +44,11 @@ RunnerDep = Annotated[AgentRunner, Depends(get_runner)]
     "/api/recommendations/{recommendation_id}/runs", status_code=202, response_model=RunStarted
 )
 def start_run(recommendation_id: str, request: Request, runner: RunnerDep):
+    return RunStarted(run_id=launch_run(request, runner, recommendation_id), status="queued")
+
+
+def launch_run(request: Request, runner: AgentRunner, recommendation_id: str) -> str:
+    """Create a run and execute it on a background worker; the caller answers at once."""
     try:
         run_id = runner.create_run(recommendation_id)
     except LookupError as exc:
@@ -50,7 +56,7 @@ def start_run(recommendation_id: str, request: Request, runner: RunnerDep):
     except RunConflictError as exc:
         raise HTTPException(409, str(exc)) from exc
     run_in_background(request.app.state.executor, runner.execute, run_id)
-    return RunStarted(run_id=run_id, status="queued")
+    return run_id
 
 
 @router.get("/api/runs", response_model=list[RunSummary])
@@ -108,4 +114,5 @@ def get_run(
         purchase_orders=[PurchaseOrderOut.model_validate(po) for po in pos],
         escalations=[EscalationOut.model_validate(e) for e in escalations],
         steps=[StepOut.model_validate(step) for step in steps],
+        reviewer_call=reviewer_verdict(session.get(CustomScenario, run.recommendation_id), run),
     )

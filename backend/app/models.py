@@ -30,7 +30,7 @@ class Base(DeclarativeBase):
 
 # Bump whenever a table or column changes. On startup a database stamped with another
 # version is rebuilt from the scenarios (demo data only; production would use migrations).
-SCHEMA_VERSION = 7
+SCHEMA_VERSION = 8
 
 
 class SchemaInfo(Base):
@@ -223,6 +223,25 @@ class Recommendation(Base):
     # Snapshot of what the source saw, so staleness can be detected.
     inputs: Mapped[dict[str, Any]] = mapped_column(JSON)
     status: Mapped[str] = mapped_column(String(24), default="open")
+
+
+class CustomScenario(Base):
+    """A recommendation a person built in the scenario builder instead of a YAML file.
+
+    Holds the reviewed form (to duplicate it) and the person's own expected answer. No agent
+    code reads this table, so the agent cannot see that answer.
+    """
+
+    __tablename__ = "custom_scenarios"
+
+    recommendation_id: Mapped[str] = mapped_column(
+        ForeignKey("recommendations.id"), primary_key=True
+    )
+    number: Mapped[int] = mapped_column(Integer, unique=True)  # every id is derived from it
+    preset: Mapped[str | None] = mapped_column(String(64), default=None)
+    input: Mapped[dict[str, Any]] = mapped_column(JSON)
+    reviewer_call: Mapped[dict[str, Any] | None] = mapped_column(JSON, default=None)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
 
 
 class AgentRun(Base):

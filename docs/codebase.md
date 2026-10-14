@@ -46,9 +46,10 @@ Contents
 │   │   ├── main.py              FastAPI app factory, health endpoint, wiring
 │   │   ├── config.py            settings from env / .env
 │   │   ├── db.py                engine (SQLite WAL, FKs on), sessions, schema create/drop
-│   │   ├── models.py            SQLAlchemy tables (schema version 7)
+│   │   ├── models.py            SQLAlchemy tables (schema version 8)
 │   │   ├── schemas.py           API response models
 │   │   ├── scenarios.py         YAML scenario loader and validation
+│   │   ├── custom_scenarios.py  scenarios built in the UI: form model, presets, form <-> world
 │   │   ├── seed.py              seeds/rebuilds the database from scenarios
 │   │   ├── background.py        thread-pool executor for agent runs
 │   │   ├── admin_ui.py          read-only SQLAdmin browser at /admin
@@ -60,10 +61,14 @@ Contents
 │   ├── scenarios/               _baseline.yaml + 14 hand-labelled scenario files
 │   ├── recordings/              14 recorded Gemini runs for key-free replay
 │   ├── evals/                   graders, harness, golden trajectories, runner, reports
-│   └── tests/                   296 pytest tests
+│   └── tests/                   379 pytest tests
 └── frontend/                    React 19 + Vite 8 + TypeScript buyer console
     └── src/                     api client, hash router, pages, components, one stylesheet
 ```
+
+Custom scenarios (built in the UI) add `app/custom_scenarios.py`,
+`app/services/custom_scenarios.py`, `app/api/custom_scenarios.py`, `app/agent/scenario_draft.py`
+and, in the frontend, `pages/ScenarioBuilder.tsx` with its form components.
 
 The backend is layered. Each layer only calls the ones below it:
 
@@ -143,6 +148,8 @@ gitignored and must never be committed.
 | `LLM_MAX_RETRIES` | `4` | Retries on 429/5xx |
 | `AGENT_MAX_LLM_CALLS` | `16` | Hard cap on model calls per run (a normal run uses 5–8) |
 | `AGENT_WORKERS` | `2` | Concurrent agent runs in the API |
+| `ALLOW_CUSTOM_SCENARIOS` | `true` | Lets people build their own scenarios in the UI |
+| `MAX_CUSTOM_SCENARIOS` | `20` | Most custom scenarios at once (reset removes them) |
 
 ### `.gitignore` and `.gitattributes`
 - `.gitignore` excludes:
@@ -183,6 +190,8 @@ is listed in the `.env.example` table above. Three more fields have no entry the
 - `make_engine(url)`: for SQLite it allows cross-thread use (agent runs execute on worker
   threads) and turns on `journal_mode=WAL` (readers do not block the agent's writes) and
   `foreign_keys=ON`.
+- `make_memory_engine()`: a private in-memory SQLite (one shared connection), used to preview
+  a custom scenario through the real seed and engine code without touching the live database.
 - `make_session_factory(engine)`: a sessionmaker with `expire_on_commit=False`.
 - `create_schema` / `drop_schema`.
 
@@ -192,7 +201,7 @@ relationships**: services query explicitly and flush parent rows first. Dates us
 simulated clock; `agent_runs` timestamps use the wall clock.
 
 Constants:
-- `SCHEMA_VERSION = 7`. Bump it on any table or column change. A database stamped with
+- `SCHEMA_VERSION = 8`. Bump it on any table or column change. A database stamped with
   another version is rebuilt from the scenarios on start.
 - `OPEN_PO_STATUSES = (submitted, confirmed, partially_confirmed)`: POs whose units are still
   coming. These count toward inventory position.
@@ -216,6 +225,7 @@ Constants:
 | `agent_runs` (`AgentRun`) | See below |
 | `agent_steps` (`AgentStep`) | The trace: `seq`, `kind` (llm/tool/guardrail/system), `name`, JSON `payload`, duration |
 | `escalations` (`Escalation`) | Questions handed to a human: severity, reason, questions, options, status, resolution |
+| `custom_scenarios` (`CustomScenario`) | A recommendation built in the scenario builder: its `number` (every id derives from it), preset, the reviewed form (`input`) and the person's `reviewer_call`. No agent code reads this table |
 
 **`PurchaseOrder` columns**
 - **The order:** `sku`, `node_id`, `supplier_id`, `quantity`, `unit_cost`, `status`, `eta`,
@@ -256,8 +266,8 @@ Pydantic models returned by the routers. Most are built from ORM objects (`from_
 | Model | Contents |
 |---|---|
 | `RunSummary` | A run's status, decision, quantity, usage and timestamps |
-| `RunDetail` | `RunSummary` plus rationale, key factors, risks, evidence, error, validation issues, fallback proposal, `paused_for`, POs, escalations and `steps` |
-| `RecommendationSummary` | Product and supplier names, status, `latest_run`, `live_po` (a PO still in play; while it exists no new run can start) |
+| `RunDetail` | `RunSummary` plus rationale, key factors, risks, evidence, error, validation issues, fallback proposal, `paused_for`, POs, escalations, `steps`, and `reviewer_call` (a `ReviewerVerdict`: the person's expected answer for a custom scenario, with `agrees`) |
+| `RecommendationSummary` | Product and supplier names, status, `latest_run`, `live_po` (a PO still in play; while it exists no new run can start), `custom` |
 | `RecommendationDetail` | Summary plus `source`, `method`, `inputs` |
 | `RecommendationContext` | The engine snapshot, its evaluation, staleness findings and the supplier note |
 | `PurchaseOrderOut`, `PurchaseOrderDetail` | A PO; the detail adds its `events`. `run_id` and `idempotency_key` are not exposed |
@@ -281,6 +291,24 @@ Functions:
 - `_check_unique` enforces unique scenario ids, SKUs, budget categories, recommendation ids
   and open-PO ids across scenarios, because all scenarios share one database. A supplier
   reused across scenarios must be defined identically.
+- `load_baseline_world(dir)` returns the baseline world on its own.
+
+### `backend/app/custom_scenarios.py`: scenarios built in the UI
+Pure (no database, no LLM). It turns the form a buyer fills in into the same `WorldSpec` the
+YAML files produce.
+- **`CustomScenarioInput`:** the flat form: product, stock, demand (with optional recent
+  drift), up to 5 open POs (`OpenPOInput`, with notes), supplier (existing id, or a new name and
+  rates), terms and portal note, how the simulated supplier answers (confirm, price increase,
+  partial fill), budget, and the recommendation (quantity, age, what it saw). Bounds follow the
+  engine's own limits. Names are one short line of plain characters, because the agent sees
+  them unwrapped.
+- **`ReviewerCall`:** the decision and quantity range the person expects.
+- **`to_world` / `from_world`:** form to world and back, so every demo scenario is a preset
+  (`presets()`). Sales follow the baseline's weekly shape with an exact average
+  (`weekly_pattern`); the method text matches the demo scenarios word for word
+  (`method_text`); `formula_quantity` is what the recommendation's own formula gives.
+- **`CustomIds`:** `SKU-C001`, `REC-C001`, `custom-001`, `SUP-C001`, `PO-C001-1`. These are not
+  numeric, so they leave the agent's `PO-5001` numbering alone.
 
 ### `backend/app/seed.py`: database seeding
 - `seed_scenarios(session, scenarios, today)` writes every scenario's world:
@@ -291,7 +319,10 @@ Functions:
   - budget for the current month
   - the recommendation and pre-existing open POs (created by `buyer`)
   
-  All dates are relative to `today`.
+  All dates are relative to `today`. It is a loop over `add_world`.
+- `add_world(session, world, scenario_id, title, today)` adds one world to a database that may
+  already hold others (custom scenarios), reusing the node and an existing supplier and
+  refusing a supplier that conflicts.
 - `reset_database(...)` drops everything, recreates, seeds and stamps `SCHEMA_VERSION`.
 - `ensure_database(...)` runs on API and CLI start. It keeps the data if the version
   matches; otherwise it rebuilds (demo data only; production would use migrations).
@@ -308,8 +339,11 @@ scripted LLM and an inline executor. Module-level `app = create_app()` is what
   (an `AgentRunner`, or `None` with `llm_error` set if `build_llm_client` failed).
   - If the runner is `None`, data endpoints still work and run endpoints return 503.
 - **CORS:** only `CORS_ORIGINS` is allowed.
-- **`GET /api/health`:** returns `status`, `env`, `agent` (`ready`/`disabled`) and `agent_error`.
-- **Routers:** recommendations, runs, approvals, escalations, purchase orders, admin.
+- **`GET /api/health`:** returns `status`, `env`, `agent` (`ready`/`disabled`), `agent_error`,
+  `llm_provider` (`replay` cannot run custom scenarios) and `custom_scenarios`.
+- **`app.state.llm`:** the model client, also used by the describe-in-words call.
+- **Routers:** recommendations, runs, approvals, escalations, purchase orders, custom
+  scenarios, admin.
 - **Admin UI:** `/admin` is mounted when `ADMIN_UI_ENABLED`.
 
 ### `backend/app/background.py`: running work off the request thread
@@ -319,7 +353,7 @@ scripted LLM and an inline executor. Module-level `app = create_app()` is what
   pool.
 
 ### `backend/app/admin_ui.py`: read-only database browser
-SQLAdmin views for the 14 data tables, mounted at `/admin`. They can list, search, sort and
+SQLAdmin views for the 15 data tables, mounted at `/admin`. They can list, search, sort and
 export, but cannot create, edit or delete: hand edits would bypass the PO state machine, and
 the validators trust the database. There is no login, so the browser is for local use only.
 
@@ -512,6 +546,19 @@ writes a `purchase_order_events` row: `created`, `amended`, `approval_requested`
 ETA = request date + lead time. An unknown behaviour, or a supplier that doesn't carry the
 product, raises `SupplierGatewayError`.
 
+### `services/custom_scenarios.py`: custom scenarios against the database
+- `parse_input` validates the form and returns problems by field path
+  (e.g. `open_purchase_orders.0.note`).
+- `preview(session, input, node, today)` seeds the scenario into a private in-memory database
+  (`make_memory_engine`) and runs the same code a real run uses: `context_for_recommendation`,
+  `evaluate_quantity` on the recommended quantity, staleness findings, and the rules-only
+  `decide`. The live database is only read, to resolve an existing supplier.
+- `create(...)` adds the scenario to the live database as one more recommendation. Under a
+  lock it checks the cap, takes the next number, resolves the supplier, picks a free budget
+  category (`unique_category`: the preset's real-sounding name, numbered only if taken, since
+  the agent sees it), seeds it with `add_world` and stores the `CustomScenario` row.
+- `reviewer_verdict(custom, run)` compares the person's call with the agent's decision.
+
 ---
 
 ## Agent
@@ -661,6 +708,14 @@ Helpers used by the orchestrator:
   this run, within 0.5%.
 - **`PLACED_STATUSES`, `unapproved_reasons`:** also used by the graders.
 
+### `agent/scenario_draft.py`: describe a scenario in words
+A separate model call, not the purchasing agent. `draft_from_description(llm, description,
+base, suppliers)` gives the model one tool, `fill_scenario_form` (an all-optional
+`CustomScenarioInput`), and the form as it is. `merge_draft` treats the output as untrusted:
+unknown fields are reported and dropped, nulls mean "not mentioned", and a value that fails
+validation keeps the form's value with a note. One nudge if the model answers in text.
+Nothing is created; the person reviews the form first.
+
 ### `agent/prompts.py`: what the model is told
 - **`SYSTEM_PROMPT`.** The model reviews a recommendation as a claim to verify, not an
   instruction, in six steps:
@@ -741,7 +796,12 @@ return 422.
 | GET | `/api/purchase-orders/{id}` | `purchase_orders.py` | PO with its event log |
 | GET | `/api/escalations` | `escalations.py` | Filter by status or recommendation |
 | POST | `/api/escalations/{id}/resolve` | `escalations.py` | Records who resolved it and how. When the last open escalation of a recommendation is resolved, the recommendation becomes `resolved` |
-| POST | `/api/admin/reset` | `admin.py` | Wipes and reseeds all scenarios. 403 unless `ALLOW_DEMO_RESET` |
+| POST | `/api/admin/reset` | `admin.py` | Wipes and reseeds all scenarios (custom ones are removed). 403 unless `ALLOW_DEMO_RESET` |
+| GET | `/api/custom-scenarios/presets` | `custom_scenarios.py` | The demo scenarios as editable presets (without their labels) and the suppliers |
+| POST | `/api/custom-scenarios/preview` | `custom_scenarios.py` | The engine's view and the rules-only decision for a form. Invalid input returns 200 with `problems` |
+| POST | `/api/custom-scenarios/draft` | `custom_scenarios.py` | Describe in words: returns the form with the stated fields filled, for review. 503 without a model, 409 in replay mode, 502 if the model fails |
+| POST | `/api/custom-scenarios` | `custom_scenarios.py` | Create (201 with `recommendation_id`) and start a run unless `run=false`. Optional `reviewer_call` and `title`.<br>- 403: disabled<br>- 409: the cap, or replay mode with `run=true`<br>- 422: invalid form<br>- 503: running without a model |
+| GET | `/api/custom-scenarios/{id}` | `custom_scenarios.py` | The stored form and call, to duplicate it |
 
 `approvals.py` keeps an in-process guard (`_resuming`) so a double click cannot resume the
 same run twice.
@@ -876,7 +936,7 @@ Writes the Markdown report and its JSON twin:
 
 ## Backend tests
 
-`backend/tests/`: **296 tests** (232 functions plus parametrized cases).
+`backend/tests/`: **379 tests** (278 functions plus parametrized cases).
 - Every test database is a SQLite file in pytest's `tmp_path`. Tests never touch
   `purchasing.db`.
 - No test calls a real LLM or the network: agent runs use `ScriptedClient`, and the Gemini
@@ -902,13 +962,16 @@ Writes the Markdown report and its JSON twin:
 | `test_purchase_orders.py` | 15 | The PO service: lifecycle, budget commitment and release, idempotency, approvals, supplier price rise and partial fill, supplier outage rollback, cancel |
 | `test_supplier_gateway.py` | 6 | The mock supplier's three behaviours and its errors |
 | `test_context.py` | 17 | Seeded data produces each scenario's rules-baseline decision; `build_context` |
-| `test_scenarios.py` | 12 | YAML loading, merging and validation; seeding counts and dates; schema-version rebuild |
+| `test_scenarios.py` | 16 | YAML loading, merging and validation; seeding counts and dates; adding one world (reused node and supplier, conflicting supplier refused); the in-memory engine; schema-version rebuild |
+| `test_custom_scenarios.py` | 48 | Form validation bounds; generated sales and method text; presets; for all 14 scenarios, the round trip scenario -> form -> world gives the engine the same situation |
+| `test_api_custom_scenarios.py` | 21 | Presets; live preview (and that it writes nothing); create and run with a scripted model; your call agrees or disagrees and never reaches the model; duplicate; limits, disabled, replay mode; describe in words |
+| `agent/test_scenario_draft.py` | 9 | The draft tool's schema; merging (nulls, unknown fields, invalid values, new supplier); nudge; failures |
 | `test_models.py` | 2 | `Budget.available`; foreign keys enforced |
 | `test_api.py` | 12 | Recommendation, context and PO endpoints; demo reset |
 | `test_api_runs.py` | 9 | Start and poll runs; `steps_after`; `live_po`; 409 conflicts; 503 without an LLM |
 | `test_api_approvals.py` | 7 | Approval queue; approve or decline resumes the run; direct decisions; 409, 422 and 503 cases |
 | `test_api_escalations.py` | 3 | List and resolve escalations; the recommendation becomes resolved |
-| `test_admin_ui.py` | 19 | Every admin view renders; computed columns; read-only; can be disabled |
+| `test_admin_ui.py` | 20 | Every admin view renders; computed columns; read-only; can be disabled |
 | `test_health.py` | 1 | `/api/health` |
 
 ---
@@ -930,7 +993,7 @@ runtime dependencies are `react` and `react-dom`.
 ### `src/main.tsx` and `src/App.tsx`
 `main.tsx` mounts `<App/>` in `StrictMode`. `App.tsx` is the shell:
 - The top bar has:
-  - "Recommendations" and "Approvals" links
+  - "Recommendations", "New scenario" and "Approvals" links
   - a pending-approvals badge
   - the agent state: ready, disabled or API unreachable
 - It polls `/api/health` and `/api/approvals` every **5 s**.
@@ -953,29 +1016,40 @@ and `ApiError`, which carries FastAPI's `detail` message.
 | `decline` | POST `/api/purchase-orders/{id}/decline` |
 | `resolveEscalation` | POST `/api/escalations/{id}/resolve` |
 | `reset` | POST `/api/admin/reset` |
+| `builderOptions` | GET `/api/custom-scenarios/presets` |
+| `previewScenario` | POST `/api/custom-scenarios/preview` (abortable) |
+| `draftScenario` | POST `/api/custom-scenarios/draft` |
+| `createScenario` | POST `/api/custom-scenarios` |
+| `customScenario` | GET `/api/custom-scenarios/{id}` |
 
 `ACTIVE_RUN_STATUSES = ['queued', 'running']`.
 
 ### `src/router.ts`
-A tiny hash router with three routes: `#/` (inbox), `#/runs/<id>`, `#/approvals`. `useRoute()`
-follows `hashchange`; `go(path)` navigates.
+A tiny hash router: `#/` (inbox), `#/runs/<id>`, `#/approvals`, and `#/new` (or
+`#/new/<REC-id>` to duplicate a custom scenario). `useRoute()` follows `hashchange`;
+`go(path)` navigates.
 
 ### Pages
 | Page | Responsibility |
 |---|---|
-| `pages/Inbox.tsx` | The recommendation list. Each row shows product, scenario, recommended quantity, status and the latest run (linked).<br>**Run button:** "Run agent" / "Run again". Disabled while a run is active. Shows **Ordered** (disabled, with the PO and a reset hint) when an earlier run's order is still live.<br>**Reset demo data:** a two-step confirm.<br>**Polling:** every 3 s while any run is queued or running. |
+| `pages/Inbox.tsx` | The recommendation list, with a "New scenario" button. Each row shows product, scenario (custom ones carry a chip), recommended quantity, status and the latest run (linked).<br>**Run button:** "Run agent" / "Run again". Disabled while a run is active, and for custom rows in replay mode. Shows **Ordered** (disabled, with the PO and a reset hint, or "Duplicate as new" for custom rows) when an earlier run's order is still live.<br>**Reset demo data:** a two-step confirm.<br>**Polling:** every 3 s while any run is queued or running. |
 | `pages/RunDetail.tsx` | One run, live. Left: the agent trace (`Timeline`). Right: the approval panel while paused, then the decision card, POs, escalations and the recommendation.<br>**Polling:** every 1.5 s while working, fetching only new steps (`steps_after`).<br>**Merging:** steps are merged by `seq`, because polls can overlap and StrictMode mounts twice. Responses for a run the user has navigated away from are ignored. |
 | `pages/Approvals.tsx` | The queue of POs waiting for approval: units, value, reason chips, a link to each run. Decisions are made on the run page |
+| `pages/ScenarioBuilder.tsx` | Build your own scenario. Left: preset dropdown, the describe box and the form. Right (sticky): the live preview, "your call" and Create.<br>**Preview:** debounced 400 ms; a newer edit cancels the older request; server problems show under each field.<br>**Create and run** / **Create only**; run and describe are disabled, with the reason, in replay mode or without a model.<br>`#/new/<id>` starts from a stored custom scenario. |
 
 ### Components
 | Component | Responsibility |
 |---|---|
 | `components/ApprovalPanel.tsx` | Shown while a run is paused: PO, value and every approval reason.<br>- **Approver:** remembered in `localStorage`.<br>- **Comment:** required to decline.<br>- **Buttons:** "Approve and send" / "Decline". The run then resumes. |
-| `components/DecisionCard.tsx` | The decision, final vs recommended quantity, confidence, rationale, key factors and risks. Also shows "needs review" issues, the degraded-mode proposal, errors and usage (calls, tokens, evidence n/7) |
+| `components/DecisionCard.tsx` | The decision, final vs recommended quantity, confidence, rationale, key factors and risks. Also shows "your call" with agrees / disagrees (custom scenarios), "needs review" issues, the degraded-mode proposal, errors and usage (calls, tokens, evidence n/7) |
 | `components/PurchaseOrders.tsx` | The run's POs: ordered vs confirmed quantity and price, value, ETA, approval (who, comment), the supplier's message |
 | `components/Escalations.tsx` | The run's escalations: reason, questions, options, and a form to mark each resolved |
 | `components/Timeline.tsx` | Renders every step. Each step can be expanded to its raw JSON.<br>- **Model turns:** which tools were called, tokens.<br>- **Tool calls:** a readable summary per tool. The what-if shows feasibility, need, value, peak, cover and finding chips. PO results show the outcome, approval, untrusted supplier text, outcome check and circuit breaker.<br>- **System and guardrail notes:** shown in readable form. |
 | `components/StatusChip.tsx` | Maps run, recommendation, PO and decision states to coloured chips |
+| `components/ScenarioForm.tsx` | The builder's form sections: product, stock, demand, open POs (row editor, up to 5), supplier and terms, the supplier's answer, budget, the recommendation |
+| `components/ScenarioPreview.tsx` | The engine's view of the recommended quantity (need, limits, feasibility, cover, approval reasons, stale inputs) and what a rules-only system would do |
+| `components/DescribeBox.tsx` | Describe in words: one model call fills the form; filled fields are highlighted and rejected values listed |
+| `components/fields.tsx` | `NumberField` (keeps what is typed, e.g. "-" on the way to "-2"), `TextField`, `SelectField`, each showing its field's problem |
 
 ### `src/index.css`
 One stylesheet built on CSS custom properties: colour tokens, chips, tables, the two-column
@@ -1006,3 +1080,4 @@ approval and escalation cards. It is light theme only.
 | Connect a real supplier | Implement `SupplierGateway` from `services/supplier_gateway.py` and pass it via `AgentRunner(gateway_factory=...)` |
 | Change a table | `models.py`: bump `SCHEMA_VERSION` (demo DBs rebuild on start) and update `seed.py` / `scenarios.py` if the data shape changes |
 | Change what the buyer sees for a step | `frontend/src/components/Timeline.tsx` (trace) or `DecisionCard.tsx` (outcome) |
+| Add a field to the scenario builder | `CustomScenarioInput`, `to_world` and `from_world` in `app/custom_scenarios.py` (the round-trip test then checks all 14 presets), the form in `frontend/src/components/ScenarioForm.tsx` |

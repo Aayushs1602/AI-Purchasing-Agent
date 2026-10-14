@@ -130,6 +130,29 @@ final state independently of the agent.
 - **Degraded mode.** If the LLM fails, code proposes the rules-only decision to a human
   (an escalation) and takes no action on it.
 
+## Custom scenarios
+
+A buyer can build their own situation in the UI (or describe it in words) instead of using
+the 14 fixed scenarios. What changes for the agent: nothing.
+
+- The form is converted to the same `WorldSpec` the YAML scenarios use and seeded through the
+  same code (`app/custom_scenarios.py`, `seed.add_world`). The agent reviews it with the same
+  tools, prompt, policy and guardrails. A test proves every demo scenario rebuilt through the
+  form gives the engine exactly the same situation.
+- The agent never sees the preset it came from, the title, the preview, or the person's own
+  expected answer ("your call"). That answer lives in its own table (`custom_scenarios`),
+  which no agent code reads; a test checks it appears nowhere in what the model received.
+- Names (product, supplier, category) reach the agent as plain text, so the form limits them
+  to one short line of plain characters. Notes on the supplier portal and on open POs are the
+  free-text channel and are wrapped as untrusted data, as for the demo scenarios: a buyer can
+  try their own prompt injection there.
+- "Describe it in words" is a separate model call (`agent/scenario_draft.py`) with one tool,
+  `fill_scenario_form`. Its output is untrusted: it is validated field by field, invalid values
+  keep the form's value, and the person reviews the form before anything is created. The
+  description itself never reaches the purchasing agent.
+- Replay mode cannot run a custom scenario (there is no recording of it), so creating and
+  running is refused there before anything is created.
+
 ## LLM integration
 
 - Provider-neutral interface (`agent/llm/base.py`): tool calls in, tool results out. The loop

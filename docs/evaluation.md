@@ -153,6 +153,13 @@ were. The replays show every recorded decision still ends right once code routes
 but most recordings were made with the earlier prompt; a full live re-run with the current
 prompt is still the next step.
 
+### Custom scenarios are not part of the evaluation
+
+Scenarios built in the UI have no hand-written labels, so they are not graded. If the person
+states "your call" before the run, the run page shows whether the agent agrees, which is an
+informal check rather than a measurement. A custom situation worth keeping belongs in
+`backend/scenarios/` as a YAML file with an `expect` block written before running the agent.
+
 ## Limits of this evaluation
 
 - 14 scenarios and 3 repeats are enough to show behaviour and variance, not to estimate a

@@ -9,7 +9,9 @@ answers differently.
 
 It implements **Scenario 1 (purchase recommendation review)** end to end, across 14 variants
 that each break the recommendation in a different way, and touches Scenarios 2 and 4 (supplier
-short-ships, constraints that block the recommended purchase) along the way.
+short-ships, constraints that block the recommended purchase) along the way. Beyond the
+built-in variants, you can **set up your own situation** in the UI, or describe it in words,
+and run the agent on it live.
 
 > **The LLM proposes, deterministic code disposes.** The model gathers evidence, weighs
 > signals that do not fit a formula and explains itself. Plain code does every calculation,
@@ -19,6 +21,7 @@ short-ships, constraints that block the recommended purchase) along the way.
 
 - [Quick start](#quick-start)
 - [Demo walkthrough](#demo-walkthrough)
+- [Try your own scenario](#try-your-own-scenario)
 - [How it works](#how-it-works)
 - [How decisions are validated](#how-decisions-are-validated)
 - [Evaluation](#evaluation)
@@ -106,6 +109,33 @@ PO events, escalations, inventory, ...), useful for checking what the agent actu
 6. Use **Reset demo data** to start over. A recommendation whose order is already placed shows
    **Ordered** and cannot be run again until then: a second review would count that order as
    stock on the way and find nothing left to buy.
+
+## Try your own scenario
+
+The 14 scenarios are fixed data with hand-written expected outcomes, which only the graders
+see. To test the agent on a situation nobody prepared, open **New scenario** (`#/new`):
+
+1. **Start from a preset** (any demo scenario) and change anything: stock, demand and recent
+   sales, open POs with free-text notes (overdue ones too), the supplier and its terms, what
+   the supplier will do when the order is sent (confirm, raise the price, ship less), the
+   budget, and the recommendation itself, including what it saw when it was made.
+2. Or **describe it in words**: "Only 120 colas left, a 320-unit PO is two days late and the
+   supplier says it is on hold, $1,500 of budget left." One model call fills in the form;
+   the filled fields are highlighted for you to check. Nothing is created yet.
+3. The **preview** updates as you type: what the deterministic engine computes for the
+   recommended quantity, and what a rules-only system would do.
+4. Optionally state **your call** (the decision and quantity you expect). It is stored apart
+   from the scenario and never shown to the agent; the run page then shows whether the agent
+   agrees with you.
+5. **Create and run.** The scenario becomes one more recommendation (`REC-C001`, ...) and the
+   agent reviews it with exactly the same tools, data path and guardrails as the demo
+   scenarios. It sees the data, not the preset, the preview or your call. Try a supplier note
+   that gives orders, a PO that is late with or without a confirmed date, or sales that drift
+   away from the forecast.
+
+Custom scenarios need a live model (replay mode only has recordings of the demo scenarios).
+They are removed by **Reset demo data**; a placed one can be reopened with **Duplicate as
+new**. Settings: `ALLOW_CUSTOM_SCENARIOS`, `MAX_CUSTOM_SCENARIOS` (default 20).
 
 ## How it works
 
@@ -237,6 +267,7 @@ backend/
     agent/          LLM clients, tools, prompt, orchestrator, checks
     api/            recommendations, runs, approvals, escalations, POs, admin
     models.py       SQLAlchemy schema        scenarios.py / seed.py   YAML fixtures
+    custom_scenarios.py  scenarios built in the UI (form <-> world, presets)
     cli.py          command line             admin_ui.py              read-only /admin
   scenarios/        baseline + 14 scenario YAMLs with expected outcomes
   recordings/       recorded live Gemini runs (replay mode)
@@ -263,6 +294,11 @@ Every file and component is described in [docs/codebase.md](docs/codebase.md).
 - **Model variance.** The small free model is not equally reliable on every judgment call; the
   evaluation measures this across repeats rather than assuming it away. The code-enforced
   guardrails are what keep a wrong judgment from becoming an unsafe action.
+- **Custom scenarios** are not graded evaluations: they have no hand-written labels ("your
+  call" is an informal check). Product, supplier and category names reach the agent as
+  plain text, so they are limited to one short line of plain characters; notes are the
+  free-text channel and are marked as untrusted data. Each run costs about 5-8 model calls
+  of the free-tier quota.
 - Secrets: the API key lives only in `.env` (gitignored) and is held as a `SecretStr`.
 
 ## Extending to Scenarios 2-4

@@ -3,6 +3,7 @@ import { api, type Health } from './api'
 import { Approvals } from './pages/Approvals'
 import { Inbox } from './pages/Inbox'
 import { RunDetail } from './pages/RunDetail'
+import { ScenarioBuilder } from './pages/ScenarioBuilder'
 import { useRoute } from './router'
 
 export default function App() {
@@ -27,6 +28,7 @@ export default function App() {
   }, [refreshShell])
 
   const agentReady = health?.agent === 'ready'
+  const liveModel = agentReady && health?.llm_provider !== 'replay'
 
   return (
     <>
@@ -37,6 +39,9 @@ export default function App() {
         <nav>
           <a href="#/" className={route.page === 'inbox' ? 'active' : ''}>
             Recommendations
+          </a>
+          <a href="#/new" className={route.page === 'new' ? 'active' : ''}>
+            New scenario
           </a>
           <a href="#/approvals" className={route.page === 'approvals' ? 'active' : ''}>
             Approvals{pending > 0 && <span className="badge">{pending}</span>}
@@ -53,9 +58,14 @@ export default function App() {
         </span>
       </header>
 
-      {route.page === 'inbox' && <Inbox agentReady={agentReady} onDataChanged={refreshShell} />}
+      {route.page === 'inbox' && (
+        <Inbox agentReady={agentReady} liveModel={liveModel} onDataChanged={refreshShell} />
+      )}
       {route.page === 'run' && <RunDetail id={route.id} />}
       {route.page === 'approvals' && <Approvals />}
+      {route.page === 'new' && (
+        <ScenarioBuilder key={route.from ?? 'new'} from={route.from} health={health} />
+      )}
     </>
   )
 }

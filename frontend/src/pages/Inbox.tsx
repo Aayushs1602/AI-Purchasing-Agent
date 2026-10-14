@@ -5,10 +5,12 @@ import { go } from '../router'
 
 interface Props {
   agentReady: boolean
+  // False in replay mode, which only has recordings of the demo scenarios.
+  liveModel: boolean
   onDataChanged: () => void
 }
 
-export function Inbox({ agentReady, onDataChanged }: Props) {
+export function Inbox({ agentReady, liveModel, onDataChanged }: Props) {
   const [recs, setRecs] = useState<Recommendation[] | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [starting, setStarting] = useState<string | null>(null)
@@ -72,6 +74,9 @@ export function Inbox({ agentReady, onDataChanged }: Props) {
           </p>
         </div>
         <div style={{ display: 'flex', gap: 8 }}>
+          <button className="primary" onClick={() => go('/new')}>
+            New scenario
+          </button>
           {confirmReset && (
             <button onClick={() => setConfirmReset(false)}>Keep current data</button>
           )}
@@ -116,6 +121,7 @@ export function Inbox({ agentReady, onDataChanged }: Props) {
               // An earlier run already placed an order: a new review would only count it as
               // stock on the way, so the button stays off until the demo data is reset.
               const ordered = rec.live_po && !active ? rec.live_po : null
+              const replayOnly = rec.custom && !liveModel
               return (
                 <tr key={rec.id}>
                   <td>
@@ -125,7 +131,7 @@ export function Inbox({ agentReady, onDataChanged }: Props) {
                     </span>
                   </td>
                   <td>
-                    {rec.title}
+                    {rec.title} {rec.custom && <span className="chip violet">custom</span>}
                     <span className="sub mono">{rec.scenario}</span>
                   </td>
                   <td className="num mono">{rec.quantity}</td>
@@ -150,7 +156,10 @@ export function Inbox({ agentReady, onDataChanged }: Props) {
                   <td style={{ textAlign: 'right' }}>
                     <button
                       className="primary"
-                      disabled={!agentReady || active || ordered !== null || starting !== null}
+                      disabled={
+                        !agentReady || active || ordered !== null || replayOnly || starting !== null
+                      }
+                      title={replayOnly ? 'Replay mode cannot run custom scenarios' : undefined}
                       onClick={() => start(rec)}
                     >
                       {starting === rec.id
@@ -164,7 +173,12 @@ export function Inbox({ agentReady, onDataChanged }: Props) {
                     {ordered && (
                       <span className="sub">
                         <span className="mono">{ordered.id}</span> · {ordered.quantity} units,{' '}
-                        {ordered.status}. Reset demo data to review again.
+                        {ordered.status}.{' '}
+                        {rec.custom ? (
+                          <a href={`#/new/${rec.id}`}>Duplicate as new</a>
+                        ) : (
+                          'Reset demo data to review again.'
+                        )}
                       </span>
                     )}
                   </td>

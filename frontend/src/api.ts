@@ -34,6 +34,7 @@ export interface Recommendation {
   latest_run: RunSummary | null
   // A PO still in play for this recommendation; the API refuses new runs while it exists.
   live_po: PurchaseOrder | null
+  custom: boolean // built in the scenario builder
 }
 
 export interface RecommendationDetail extends Recommendation {
@@ -107,6 +108,7 @@ export interface RunDetail extends RunSummary {
   purchase_orders: PurchaseOrder[]
   escalations: Escalation[]
   steps: Step[]
+  reviewer_call: ReviewerVerdict | null
 }
 
 export interface Approval {
@@ -121,6 +123,101 @@ export interface Health {
   status: string
   agent: 'ready' | 'disabled'
   agent_error: string | null
+  llm_provider: string | null // "replay" cannot run custom scenarios
+  custom_scenarios: boolean
+}
+
+// --- Custom scenarios -------------------------------------------------------------------
+
+// The scenario form as the builder holds it. The server validates it (field names match
+// CustomScenarioInput in backend/app/custom_scenarios.py) and reports problems by field path.
+export type ScenarioValues = Record<string, any>
+
+export interface Problem {
+  field: string
+  message: string
+}
+
+export interface Preset {
+  key: string
+  title: string
+  summary: string
+  input: ScenarioValues
+}
+
+export interface SupplierOption {
+  id: string
+  name: string
+  on_time_rate: number
+  fill_rate: number
+}
+
+export interface BuilderOptions {
+  today: string
+  presets: Preset[]
+  suppliers: SupplierOption[]
+}
+
+export interface QuantityEvaluation {
+  quantity: number
+  projection: Record<string, number | string | null>
+  limits: Record<string, number>
+  hard_violations: Finding[]
+  soft_warnings: Finding[]
+  data_quality_flags: Finding[]
+  info: Finding[]
+  approval_reasons: Finding[]
+  feasible: boolean
+  requires_approval: boolean
+}
+
+export interface ScenarioPreview {
+  evaluation: QuantityEvaluation
+  recommendation_findings: Finding[]
+  rules: { decision: string; quantity: number; requires_approval: boolean; reasons: string[] }
+  formula_quantity: number
+}
+
+export interface PreviewResponse {
+  problems: Problem[]
+  preview: ScenarioPreview | null
+}
+
+export interface DraftResponse {
+  input: ScenarioValues
+  filled: string[]
+  problems: Problem[]
+  model: string
+}
+
+export interface ReviewerCall {
+  decision: string
+  quantity_min: number | null
+  quantity_max: number | null
+  note: string | null
+}
+
+export interface ReviewerVerdict extends ReviewerCall {
+  decision_match: boolean | null
+  quantity_match: boolean | null
+  agrees: boolean | null
+}
+
+export interface StoredScenario {
+  recommendation_id: string
+  number: number
+  title: string
+  preset: string | null
+  input: ScenarioValues
+  reviewer_call: ReviewerCall | null
+}
+
+export interface CreateScenario {
+  input: ScenarioValues
+  reviewer_call: ReviewerCall | null
+  title: string | null
+  preset: string | null
+  run: boolean
 }
 
 export class ApiError extends Error {
@@ -170,6 +267,19 @@ export const api = {
   resolveEscalation: (id: string, resolvedBy: string, resolution: string) =>
     post(`/api/escalations/${id}/resolve`, { resolved_by: resolvedBy, resolution }),
   reset: () => post<{ scenarios: number }>('/api/admin/reset'),
+  builderOptions: () => request<BuilderOptions>('/api/custom-scenarios/presets'),
+  previewScenario: (input: ScenarioValues, signal?: AbortSignal) =>
+    request<PreviewResponse>('/api/custom-scenarios/preview', {
+      method: 'POST',
+      body: JSON.stringify(input),
+      signal,
+    }),
+  draftScenario: (description: string, base: ScenarioValues) =>
+    post<DraftResponse>('/api/custom-scenarios/draft', { description, base }),
+  createScenario: (body: CreateScenario) =>
+    post<{ recommendation_id: string; run_id: string | null }>('/api/custom-scenarios', body),
+  customScenario: (recommendationId: string) =>
+    request<StoredScenario>(`/api/custom-scenarios/${recommendationId}`),
 }
 
 export const ACTIVE_RUN_STATUSES = ['queued', 'running']

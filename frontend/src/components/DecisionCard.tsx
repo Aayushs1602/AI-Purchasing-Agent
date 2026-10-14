@@ -1,5 +1,32 @@
-import type { RunDetail } from '../api'
+import type { ReviewerVerdict, RunDetail } from '../api'
 import { StatusChip } from './StatusChip'
+
+// The answer the person gave before the run (hidden from the agent), next to the agent's.
+function YourCallLine({ verdict }: { verdict: ReviewerVerdict }) {
+  const range =
+    verdict.quantity_min !== null
+      ? verdict.quantity_min === verdict.quantity_max
+        ? ` ${verdict.quantity_min}`
+        : ` ${verdict.quantity_min}-${verdict.quantity_max}`
+      : ''
+  return (
+    <div className="your-call">
+      <span className="muted">Your call:</span>{' '}
+      <strong>
+        {verdict.decision}
+        {range}
+      </strong>{' '}
+      {verdict.agrees === null ? (
+        <span className="chip">agent not decided yet</span>
+      ) : verdict.agrees ? (
+        <span className="chip ok">agent agrees</span>
+      ) : (
+        <span className="chip bad">agent disagrees</span>
+      )}
+      {verdict.note && <span className="muted small"> · {verdict.note}</span>}
+    </div>
+  )
+}
 
 export function DecisionCard({ run, recommended }: { run: RunDetail; recommended: number }) {
   const proposal = run.fallback_proposal as Record<string, any> | null
@@ -53,6 +80,7 @@ export function DecisionCard({ run, recommended }: { run: RunDetail; recommended
                 : 'No decision recorded.'}
           </p>
         )}
+        {run.reviewer_call && <YourCallLine verdict={run.reviewer_call} />}
         {run.validation_issues && run.validation_issues.length > 0 && (
           <div className="notice error">
             <strong>Needs review.</strong> Finalize checks still found:

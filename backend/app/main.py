@@ -11,7 +11,15 @@ from app.admin_ui import mount_admin
 from app.agent.llm.base import LLMClient
 from app.agent.llm.factory import LLMConfigError, build_llm_client
 from app.agent.orchestrator import AgentConfig, AgentRunner
-from app.api import admin, approvals, escalations, purchase_orders, recommendations, runs
+from app.api import (
+    admin,
+    approvals,
+    custom_scenarios,
+    escalations,
+    purchase_orders,
+    recommendations,
+    runs,
+)
 from app.background import Executor, make_executor
 from app.config import Settings, get_settings
 from app.db import make_engine, make_session_factory
@@ -91,6 +99,7 @@ def create_app(
     app.include_router(approvals.router)
     app.include_router(escalations.router)
     app.include_router(purchase_orders.router)
+    app.include_router(custom_scenarios.router)
     app.include_router(admin.router)
 
     if settings.admin_ui_enabled:

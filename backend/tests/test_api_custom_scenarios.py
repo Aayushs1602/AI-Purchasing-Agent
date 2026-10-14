@@ -255,3 +255,38 @@ class TestLimits:
 
         assert response.status_code == 503
         assert client.get("/api/health").json()["llm_provider"] is None
+
+
+class TestDraft:
+    def test_fills_the_form_for_review_without_creating_anything(self, make_client):
+        llm = ScriptedClient([[{"name": "fill_scenario_form", "args": {"on_hand": 120}}]])
+        with make_client(llm=llm) as client:
+            base = preset(client, "accept_baseline")
+            response = client.post(
+                "/api/custom-scenarios/draft",
+                json={"description": "Only 120 units are left on the shelf.", "base": base},
+            )
+            recs = client.get("/api/recommendations").json()
+
+        assert response.status_code == 200, response.text
+        body = response.json()
+        assert (body["filled"], body["input"]["on_hand"], body["model"]) == (
+            ["on_hand"],
+            120,
+            "scripted",
+        )
+        assert len(recs) == 14
+
+    def test_needs_a_live_model(self, make_client, tmp_path, client):
+        body = {"description": "Only 120 units left.", "base": {}}
+        with make_client(llm=ReplayClient(tmp_path)) as replay:
+            assert replay.post("/api/custom-scenarios/draft", json=body).status_code == 409
+        assert client.post("/api/custom-scenarios/draft", json=body).status_code == 503
+
+    def test_model_failure_is_a_bad_gateway(self, make_client):
+        with make_client(llm=ScriptedClient([])) as client:
+            response = client.post(
+                "/api/custom-scenarios/draft", json={"description": "Only 120 left.", "base": {}}
+            )
+
+        assert response.status_code == 502

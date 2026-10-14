@@ -10,6 +10,7 @@ from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.agent.scenario_draft import DraftError, draft_from_description
 from app.api.deps import get_app_settings, get_session
 from app.api.runs import launch_run
 from app.config import Settings
@@ -50,6 +51,20 @@ class PreviewResponse(BaseModel):
 
     problems: list[Problem]
     preview: ScenarioPreview | None
+
+
+class DraftRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    description: str = Field(min_length=5, max_length=2000)
+    base: dict[str, Any]  # the form as it is now; the description changes only what it states
+
+
+class DraftResponse(BaseModel):
+    input: dict[str, Any]  # for review in the form; nothing has been created
+    filled: list[str]
+    problems: list[Problem]
+    model: str
 
 
 class CreateRequest(BaseModel):
@@ -103,6 +118,29 @@ def preview(data: Annotated[dict[str, Any], Body()], session: SessionDep, settin
     except InputProblems as exc:
         return PreviewResponse(problems=exc.problems, preview=None)
     return PreviewResponse(problems=[], preview=result)
+
+
+@router.post("/draft", response_model=DraftResponse)
+def draft(body: DraftRequest, request: Request, session: SessionDep, settings: SettingsDep):
+    """Fill the form from a description with one model call; the person reviews the result."""
+    if not settings.allow_custom_scenarios:
+        raise HTTPException(403, "Custom scenarios are disabled in this environment")
+    llm = request.app.state.llm
+    if llm is None:
+        raise HTTPException(503, f"No model is configured: {request.app.state.llm_error}")
+    if llm.provider == "replay":
+        raise HTTPException(409, "Describing a scenario needs a live model, not replay mode.")
+    suppliers = [
+        {"id": s.id, "name": s.name}
+        for s in session.scalars(select(Supplier).order_by(Supplier.id))
+    ]
+    try:
+        result = draft_from_description(llm, body.description, body.base, suppliers)
+    except DraftError as exc:
+        raise HTTPException(502, str(exc)) from exc
+    return DraftResponse(
+        input=result.input, filled=result.filled, problems=result.problems, model=result.model
+    )
 
 
 @router.post("", status_code=201, response_model=Created)

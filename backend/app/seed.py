@@ -28,33 +28,47 @@ from app.models import (
     Supplier,
     SupplierTerm,
 )
-from app.scenarios import Scenario, load_scenarios
+from app.scenarios import Scenario, WorldSpec, load_scenarios
 
 log = logging.getLogger(__name__)
 
 
 def seed_scenarios(session: Session, scenarios: list[Scenario], today: date) -> None:
-    """Insert every scenario's world. Parents are flushed before children (no ORM relationships)."""
-    nodes, suppliers = {}, {}
+    """Insert every scenario's world and commit."""
     for s in scenarios:
-        w = s.world
-        nodes[w.node.id] = Node(**w.node.model_dump())
-        suppliers[w.supplier.id] = Supplier(**w.supplier.model_dump())
-        session.add(Product(**w.product.model_dump()))
-    session.add_all([*nodes.values(), *suppliers.values()])
-    session.flush()
-
-    for s in scenarios:
-        _seed_world(session, s, today)
-    session.flush()
-
-    for s in scenarios:
-        _seed_recommendation_and_pos(session, s, today)
+        add_world(session, s.world, scenario_id=s.id, title=s.title, today=today)
     session.commit()
 
 
-def _seed_world(session: Session, scenario: Scenario, today: date) -> None:
-    w = scenario.world
+def add_world(
+    session: Session, world: WorldSpec, *, scenario_id: str, title: str, today: date
+) -> None:
+    """Add one scenario's world to a database that may already hold others. Does not commit.
+
+    The node and supplier are reused when they already exist (a supplier must then match).
+    Parents are flushed before children because the models declare no ORM relationships.
+    """
+    if session.get(Node, world.node.id) is None:
+        session.add(Node(**world.node.model_dump()))
+    existing = session.get(Supplier, world.supplier.id)
+    if existing is None:
+        session.add(Supplier(**world.supplier.model_dump()))
+    elif (existing.name, existing.on_time_rate, existing.fill_rate) != (
+        world.supplier.name,
+        world.supplier.on_time_rate,
+        world.supplier.fill_rate,
+    ):
+        raise ValueError(f"supplier {world.supplier.id} is defined differently in {scenario_id}")
+    session.add(Product(**world.product.model_dump()))
+    session.flush()
+
+    _seed_world(session, world, today)
+    session.flush()
+    _seed_recommendation_and_pos(session, world, scenario_id, title, today)
+    session.flush()
+
+
+def _seed_world(session: Session, w: WorldSpec, today: date) -> None:
     sku, node_id = w.product.sku, w.node.id
 
     session.add(
@@ -119,14 +133,15 @@ def _seed_world(session: Session, scenario: Scenario, today: date) -> None:
     )
 
 
-def _seed_recommendation_and_pos(session: Session, scenario: Scenario, today: date) -> None:
-    w = scenario.world
+def _seed_recommendation_and_pos(
+    session: Session, w: WorldSpec, scenario_id: str, title: str, today: date
+) -> None:
     rec = w.recommendation
     session.add(
         Recommendation(
             id=rec.id,
-            scenario=scenario.id,
-            title=scenario.title,
+            scenario=scenario_id,
+            title=title,
             sku=w.product.sku,
             node_id=w.node.id,
             supplier_id=w.supplier.id,

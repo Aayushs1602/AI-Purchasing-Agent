@@ -5,7 +5,7 @@ import pytest
 from sqlalchemy import func, select
 
 from app.config import get_settings
-from app.db import make_engine, make_session_factory
+from app.db import create_schema, make_engine, make_memory_engine, make_session_factory
 from app.models import (
     SCHEMA_VERSION,
     Budget,
@@ -17,8 +17,8 @@ from app.models import (
     Supplier,
     SupplierTerm,
 )
-from app.scenarios import deep_merge, load_scenarios
-from app.seed import ensure_database, seed_scenarios, stored_schema_version
+from app.scenarios import deep_merge, load_baseline_world, load_scenarios
+from app.seed import add_world, ensure_database, seed_scenarios, stored_schema_version
 
 SCENARIOS_DIR = get_settings().scenarios_dir
 TODAY = get_settings().sim_today
@@ -111,6 +111,59 @@ class TestSeeding:
         terms = seeded.scalar(select(SupplierTerm).where(SupplierTerm.sku == "SKU-1010"))
 
         assert terms.mock_ack == {"behaviour": "price_increase", "new_unit_cost": 2.9}
+
+
+class TestAddWorld:
+    """Adding one world to a database that already holds the scenarios (custom scenarios)."""
+
+    @pytest.fixture
+    def seeded(self, session, scenarios):
+        seed_scenarios(session, scenarios, TODAY)
+        return session
+
+    def world(self, **supplier):
+        world = load_baseline_world(SCENARIOS_DIR)
+        updates = {
+            "product": world.product.model_copy(
+                update={"sku": "SKU-X1", "name": "Test Tea", "category": "Tea"}
+            ),
+            "recommendation": world.recommendation.model_copy(update={"id": "REC-X1"}),
+        }
+        if supplier:
+            updates["supplier"] = world.supplier.model_copy(update=supplier)
+        return world.model_copy(update=updates)
+
+    def test_reuses_the_node_and_an_existing_supplier(self, seeded):
+        add_world(seeded, self.world(), scenario_id="custom-x", title="Tea", today=TODAY)
+        seeded.commit()
+
+        rec = seeded.get(Recommendation, "REC-X1")
+        assert (rec.scenario, rec.supplier_id) == ("custom-x", "SUP-ANDES")
+        assert seeded.scalar(select(func.count()).select_from(Supplier)) == 7
+
+    def test_adds_a_new_supplier(self, seeded):
+        world = self.world(id="SUP-NEW", name="New Supplier")
+        add_world(seeded, world, scenario_id="custom-x", title="Tea", today=TODAY)
+
+        assert seeded.get(Supplier, "SUP-NEW").name == "New Supplier"
+
+    def test_refuses_a_supplier_that_conflicts_with_the_stored_one(self, seeded):
+        world = self.world(fill_rate=0.5)  # SUP-ANDES exists with 0.98
+
+        with pytest.raises(ValueError, match="SUP-ANDES is defined differently"):
+            add_world(seeded, world, scenario_id="custom-x", title="Tea", today=TODAY)
+
+
+def test_memory_engine_is_one_database_across_sessions(scenarios):
+    engine = make_memory_engine()
+    create_schema(engine)
+    factory = make_session_factory(engine)
+    with factory() as session:
+        seed_scenarios(session, scenarios, TODAY)
+
+    with factory() as other:
+        assert other.scalar(select(func.count()).select_from(Recommendation)) == 14
+    engine.dispose()
 
 
 class TestSchemaVersion:

@@ -159,6 +159,11 @@ def _read_yaml(path: Path) -> dict[str, Any]:
     return data
 
 
+def load_baseline_world(directory: Path) -> WorldSpec:
+    """The baseline world on its own (the starting point for custom scenarios)."""
+    return WorldSpec.model_validate(_read_yaml(directory / "_baseline.yaml")["world"])
+
+
 def load_scenarios(directory: Path) -> list[Scenario]:
     baseline = _read_yaml(directory / "_baseline.yaml")["world"]
     scenarios = []

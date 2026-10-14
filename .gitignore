@@ -38,5 +38,9 @@ Thumbs.db
 # --- Evaluation scratch reports (CI and local runs; curated reports are committed) ---
 backend/evals/reports/ci-*
 backend/evals/reports/scratch-*
+# Reports named after their mode (the README's commands without --name)
+backend/evals/reports/scripted.*
+backend/evals/reports/replay.*
+backend/evals/reports/live.*
 # Recordings of custom scenarios: their numbers restart after a reset, so they cannot replay.
 backend/recordings/custom-*

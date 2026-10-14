@@ -17,6 +17,9 @@ and run the agent on it live.
 > signals that do not fit a formula and explains itself. Plain code does every calculation,
 > enforces hard constraints and the approval policy, and checks every action's outcome.
 
+**See it working:** [WORKING_DEMO.md](WORKING_DEMO.md) runs the demo in about five minutes, no
+API key needed, and says what you should see at each step.
+
 ## Contents
 
 - [Quick start](#quick-start)
@@ -32,7 +35,8 @@ and run the agent on it live.
 
 Deeper docs: [architecture](docs/architecture.md) ·
 [agent design](docs/agent-design.md) · [evaluation](docs/evaluation.md) ·
-[codebase guide](docs/codebase.md) (what every file does)
+[codebase guide](docs/codebase.md) (what every file does) ·
+[working demo](WORKING_DEMO.md)
 
 ## Quick start
 
@@ -79,7 +83,7 @@ python -m app.cli show RUN-1A2B3C4D
 **Tests and evaluation**
 
 ```bash
-pytest                                          # 280+ tests, offline
+pytest                                          # 370+ tests, offline
 python -m evals.run --mode scripted --strict    # golden trajectories (CI)
 python -m evals.run --mode replay --strict      # recorded Gemini runs, no key
 python -m evals.run --mode live --repeats 3     # real Gemini
